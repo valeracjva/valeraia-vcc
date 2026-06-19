@@ -1,7 +1,6 @@
 import express from 'express';
 import { existsSync } from 'fs';
-import path from 'path';
-import { dirname } from 'path';
+import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { SERVER, PATHS } from './config.js';
 
