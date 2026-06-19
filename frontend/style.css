@@ -1,0 +1,254 @@
+/* === Variables globales === */
+:root {
+  --bg:         #0D1117;
+  --surface:    #0F172A;
+  --header-bg:  #111827;
+  --border:     #1E293B;
+  --green:      #00E676;
+  --amber:      #FFAB40;
+  --red:        #FF5252;
+  --text:       #E2E8F0;
+  --muted:      #64748B;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Canvas partículas === */
+#particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* === Header === */
+.header {
+  height: 48px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--green);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.logo {
+  color: var(--green);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+}
+
+.header-host {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex: 1;
+  text-align: center;
+}
+
+.freshness-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+/* === Layout === */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* === Sidebar === */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* === Semáforo (dot pulsante) === */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  vertical-align: middle;
+}
+
+.dot.fresh  { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-slow 2s ease-in-out infinite; }
+.dot.watch  { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse-mid  1.5s ease-in-out infinite; }
+.dot.stale  { background: var(--red);   box-shadow: 0 0 6px var(--red);   animation: pulse-fast 1s ease-in-out infinite; }
+.dot.invalid { background: var(--red);  box-shadow: 0 0 6px var(--red);   animation: blink 0.5s step-end infinite; }
+
+@keyframes pulse-slow { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+@keyframes pulse-mid  { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+@keyframes pulse-fast { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+@keyframes blink      { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+.freshness-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+/* Colores de texto según frescura */
+#freshness-label.fresh,  #sidebar-freshness.fresh  { color: var(--green); }
+#freshness-label.watch,  #sidebar-freshness.watch  { color: var(--amber); }
+#freshness-label.stale,  #sidebar-freshness.stale,
+#freshness-label.invalid,#sidebar-freshness.invalid { color: var(--red); }
+
+/* === Proyecto activo === */
+.project-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.project-meta {
+  font-size: 0.73rem;
+  color: var(--muted);
+}
+
+/* === Pendientes === */
+.pendientes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pendiente {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+}
+
+.p-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.p-count { font-weight: 600; color: var(--muted); }
+
+.pendiente.p1-active .p-count { color: var(--red); }
+.pendiente.p2-active .p-count { color: var(--amber); }
+.pendiente.p3-active .p-count,
+.pendiente.p4-active .p-count { color: var(--text); }
+
+/* === Túneles === */
+.tunnel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.tunnel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+}
+
+.tunnel-dot { color: var(--muted); }
+.tunnel-port { color: var(--text); }
+.tunnel-name { color: var(--muted); flex: 1; }
+
+.badge-prod {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--red);
+  border: 1px solid rgba(255, 82, 82, 0.35);
+  background: rgba(255, 82, 82, 0.08);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.tunnel-note {
+  margin-top: 9px;
+  font-size: 0.63rem;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* === Host === */
+.host-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--green);
+}
+
+/* === Error banner === */
+.error-banner {
+  margin: 14px 16px;
+  padding: 8px 12px;
+  background: rgba(255, 82, 82, 0.08);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  border-radius: 4px;
+  color: var(--red);
+  font-size: 0.78rem;
+}
+
+.hidden { display: none !important; }
+
+/* === Main placeholder === */
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.placeholder {
+  text-align: center;
+}
+
+.placeholder-title {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.placeholder-sub {
+  font-size: 0.72rem;
+  color: var(--border);
+}

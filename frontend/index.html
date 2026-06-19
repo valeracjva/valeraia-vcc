@@ -2,11 +2,97 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>VCC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VCC — ValeraIA Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <p style="color:white">VCC cargando...</p>
+  <canvas id="particles"></canvas>
+
+  <header class="header">
+    <span class="logo">◆ VCC</span>
+    <span class="header-host" id="host">—</span>
+    <span class="freshness-badge">
+      <span class="dot" id="freshness-dot"></span>
+      <span id="freshness-label">—</span>
+    </span>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+
+      <div class="sidebar-section">
+        <div class="section-label">ESTADO HANDOVER</div>
+        <div class="freshness-row">
+          <span class="dot" id="sidebar-dot"></span>
+          <span id="sidebar-freshness">cargando...</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">PROYECTO ACTIVO</div>
+        <div id="project-name" class="project-name">—</div>
+        <div id="project-meta" class="project-meta">—</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">PENDIENTES</div>
+        <div class="pendientes-grid">
+          <div class="pendiente" id="p1"><span class="p-label">P1</span><span class="p-count" id="p1-count">—</span></div>
+          <div class="pendiente" id="p2"><span class="p-label">P2</span><span class="p-count" id="p2-count">—</span></div>
+          <div class="pendiente" id="p3"><span class="p-label">P3</span><span class="p-count" id="p3-count">—</span></div>
+          <div class="pendiente" id="p4"><span class="p-label">P4</span><span class="p-count" id="p4-count">—</span></div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">TÚNELES</div>
+        <div class="tunnel-list">
+          <div class="tunnel">
+            <span class="tunnel-dot">○</span>
+            <span class="tunnel-port">3307</span>
+            <span class="tunnel-name">FatApp</span>
+          </div>
+          <div class="tunnel">
+            <span class="tunnel-dot">○</span>
+            <span class="tunnel-port">3308</span>
+            <span class="tunnel-name">appstest</span>
+          </div>
+          <div class="tunnel">
+            <span class="tunnel-dot">○</span>
+            <span class="tunnel-port">3309</span>
+            <span class="tunnel-name">appsprod</span>
+            <span class="badge-prod">PROD</span>
+          </div>
+          <div class="tunnel">
+            <span class="tunnel-dot">○</span>
+            <span class="tunnel-port">3310</span>
+            <span class="tunnel-name">appsdesa</span>
+          </div>
+        </div>
+        <div class="tunnel-note">estado disponible en Sesión 3</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">HOST</div>
+        <div id="host-value" class="host-value">—</div>
+      </div>
+
+      <div id="error-banner" class="error-banner hidden">⚠ sin conexión</div>
+
+    </aside>
+
+    <main class="main">
+      <div class="placeholder">
+        <div class="placeholder-title">M2 Proyectos · M3 Gobernanza</div>
+        <div class="placeholder-sub">disponibles en Sesión 3</div>
+      </div>
+    </main>
+  </div>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>
