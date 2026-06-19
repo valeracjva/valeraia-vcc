@@ -1,6 +1,11 @@
 import express from 'express';
 import { existsSync } from 'fs';
+import path from 'path';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { SERVER, PATHS } from './config.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import handoverRouter from './routes/handover.js';
 import indexRouter   from './routes/index.js';
@@ -18,6 +23,8 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   next();
 });
+
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.use('/api/handover', handoverRouter);
 app.use('/api/index',    indexRouter);
