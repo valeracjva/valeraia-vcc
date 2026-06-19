@@ -1,3 +1,60 @@
+// === Partículas cursor ===
+const canvas = document.getElementById('particles');
+const ctx    = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+window.addEventListener('mousemove', (e) => {
+  for (let i = 0; i < 2; i++) {
+    particles.push({
+      x: e.clientX,
+      y: e.clientY,
+      vx: (Math.random() - 0.5) * 3,
+      vy: -(Math.random() * 2 + 1.5),
+      size: Math.random() * 2 + 2,    // 2–4 px
+      life: 60,
+      maxLife: 60,
+    });
+  }
+});
+
+function renderParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  particles = particles.filter(p => p.life > 0);
+
+  for (const p of particles) {
+    p.x    += p.vx;
+    p.y    += p.vy;
+    p.vy   -= 0.08;           // flotación sostenida
+    p.size *= 0.97;
+
+    const alpha = p.life / p.maxLife;
+
+    ctx.save();
+    ctx.globalAlpha  = alpha;
+    ctx.shadowBlur   = 8;
+    ctx.shadowColor  = '#00E676';
+    ctx.fillStyle    = '#00E676';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.max(p.size, 0.5), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    p.life--;
+  }
+
+  requestAnimationFrame(renderParticles);
+}
+
+requestAnimationFrame(renderParticles);
+
 // === Config ===
 const API_BASE  = '';          // mismo origen — Express sirve frontend y API
 const POLL_MS   = 30_000;
