@@ -711,6 +711,83 @@ body {
 
 .ssl-table-sub td { padding: 0.35rem 0.75rem; }
 
+/* === M6 — Túneles SSH === */
+#tunnels-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tunnel-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+}
+
+.tunnel-card.tunnel-prod {
+  border-color: rgba(255, 82, 82, 0.25);
+  background: rgba(255, 82, 82, 0.03);
+}
+
+.tunnel-card-dot {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 1.2rem;
+  text-align: center;
+}
+
+.tunnel-card-dot.active   { color: var(--green); text-shadow: 0 0 6px var(--green); }
+.tunnel-card-dot.inactive { color: var(--muted); }
+
+.tunnel-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tunnel-card-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tunnel-card-desc {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 0.1rem;
+}
+
+.tunnel-card-meta {
+  font-size: 0.68rem;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.btn-tunnel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.btn-tunnel.open:hover:not(:disabled)  { border-color: var(--green); color: var(--green); }
+.btn-tunnel.close:hover:not(:disabled) { border-color: var(--red);   color: var(--red); }
+.btn-tunnel.close                      { color: var(--green); border-color: rgba(0,230,118,0.3); }
+.btn-tunnel:disabled                   { opacity: 0.4; cursor: not-allowed; }
+
 .ssl-add-row {
   display: flex;
   gap: 0.5rem;

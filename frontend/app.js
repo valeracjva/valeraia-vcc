@@ -471,6 +471,11 @@ function connectWS() {
 }
 
 // === Update principal (polling 30s) ===
+function activeTab() {
+  const active = document.querySelector('.tab-btn.active');
+  return active?.dataset.tab ?? null;
+}
+
 async function update() {
   try {
     const [status, handover, tunnels] = await Promise.all([
@@ -489,6 +494,9 @@ async function update() {
     updateTunnelDots(tunnels);
     renderBriefing(handover.sections);
     showError(false);
+
+    // Refrescar tab túneles si está activo (sincroniza estado con sidebar)
+    if (activeTab() === 'tuneles') loadTunnels();
   } catch (err) {
     console.error('[VCC] update error:', err.message);
     showError(true);
@@ -676,6 +684,75 @@ async function loadSSL(force = false) {
   }
 }
 
+// === M6 — Túneles SSH ===
+let tunnelsBusy = {};
+
+function renderTunnels(tunnels) {
+  const c = document.getElementById('tunnels-container');
+  c.innerHTML = '';
+
+  for (const t of tunnels) {
+    const card = document.createElement('div');
+    card.className = `tunnel-card${t.prod ? ' tunnel-prod' : ''}`;
+    card.dataset.port = t.port;
+
+    const dot = document.createElement('span');
+    dot.className = `tunnel-card-dot ${t.active ? 'active' : 'inactive'}`;
+    dot.textContent = t.active ? '●' : '○';
+
+    const info = document.createElement('div');
+    info.className = 'tunnel-card-info';
+    info.innerHTML =
+      `<div class="tunnel-card-name">${escHtml(t.name)}${t.prod ? ' <span class="badge-prod">PROD</span>' : ''}</div>` +
+      `<div class="tunnel-card-desc">${escHtml(t.desc)}</div>` +
+      `<div class="tunnel-card-meta">:${t.port} → ${escHtml(t.remote)}</div>`;
+
+    const btn = document.createElement('button');
+    btn.className = `btn-tunnel ${t.active ? 'close' : 'open'}`;
+    btn.dataset.port = t.port;
+    btn.textContent  = t.active ? 'Cerrar' : 'Abrir';
+    btn.disabled     = !!tunnelsBusy[t.port];
+    if (tunnelsBusy[t.port]) btn.textContent = '...';
+    btn.addEventListener('click', () => toggleTunnel(t.port, t.active));
+
+    card.appendChild(dot);
+    card.appendChild(info);
+    card.appendChild(btn);
+    c.appendChild(card);
+  }
+}
+
+async function loadTunnels() {
+  try {
+    const data = await get('/api/tunnels/config');
+    renderTunnels(data);
+  } catch {
+    document.getElementById('tunnels-container').innerHTML =
+      '<div class="ssl-loading" style="color:var(--red)">Error al cargar túneles</div>';
+  }
+}
+
+async function toggleTunnel(port, isActive) {
+  tunnelsBusy[port] = true;
+  // actualizar UI inmediatamente para deshabilitar el botón
+  const btn = document.querySelector(`.btn-tunnel[data-port="${port}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = isActive ? 'Cerrando...' : 'Abriendo...'; }
+
+  try {
+    const action = isActive ? 'close' : 'open';
+    await fetch(`${API_BASE}/api/tunnels/${port}/${action}`, { method: 'POST' });
+  } catch { /* silencioso */ }
+
+  delete tunnelsBusy[port];
+  await loadTunnels();
+
+  // Sincronizar sidebar dots
+  try {
+    const tunnelStatus = await get('/api/tunnels');
+    updateTunnelDots(tunnelStatus);
+  } catch { /* silencioso */ }
+}
+
 // === M10 — ABM Dominios ===
 let sslManageMode = false;
 
@@ -838,7 +915,7 @@ async function init() {
   connectWS();
   await update();
   await loadProjects();
-  await loadSSL();
+  await Promise.all([loadSSL(), loadTunnels()]);
   setInterval(update, POLL_MS);
 }
 
