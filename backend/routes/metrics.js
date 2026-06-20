@@ -54,6 +54,24 @@ function sshExec(conf, cmd) {
         algorithms: {
           serverHostKey: ['ssh-rsa', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'ssh-ed25519'],
         },
+        // Host key verification: strict si hay fingerprint, sin verificar (con warning) si no hay.
+        // Para poblar: ssh-keyscan -t ed25519 <host> | ssh-keygen -lf - -E sha256
+        ...(conf.fingerprint
+          ? {
+              hostHash:     'sha256',
+              hostVerifier: (hash) => {
+                if (hash === conf.fingerprint) return true;
+                console.warn(`[metrics] WARN host key mismatch para ${conf.host} — esperado ${conf.fingerprint}, recibido ${hash}`);
+                return false;
+              },
+            }
+          : {
+              hostVerifier: () => {
+                console.warn(`[metrics] WARN sin fingerprint configurado para ${conf.host} — host key no verificada`);
+                return true;
+              },
+            }
+        ),
       });
     } catch (err) {
       done({ error: err.message });

@@ -33,12 +33,16 @@ const SSH = (...parts) => path.join(
   '.ssh', ...parts
 );
 
+// fingerprint: SHA256 del host key ED25519. Poblar con:
+//   ssh-keyscan -t ed25519 <host> | ssh-keygen -lf - -E sha256
+//   Copiar solo la parte "SHA256:xxxxx..." (sin el prefijo "256 ")
+// Sin fingerprint → conecta con warning en consola (MITM posible).
 export const SSH_SERVERS = {
-  'srv-appstest': { host: '10.145.2.26',    user: 'ubuntu', key: SSH('digna', 'srv-appstest.key') },
-  'srv-appsprod': { host: '10.145.2.214',   user: 'ubuntu', key: SSH('digna', 'srv-appsprod.key') },
-  'srv-appsdesa': { host: '10.145.2.165',   user: 'ubuntu', key: SSH('digna', 'srv-appsdesa.key') },
-  'srv-faty001':  { host: '172.16.100.150', user: 'fatapp', key: SSH('id_fatapp') },
-  'srv-nexo':     { host: '18.220.238.99',  user: 'ubuntu', key: SSH('fatapp', 'clavessh_aws.pem') },
+  'srv-appstest': { host: '10.145.2.26',    user: 'ubuntu', key: SSH('digna', 'srv-appstest.key'), fingerprint: null },
+  'srv-appsprod': { host: '10.145.2.214',   user: 'ubuntu', key: SSH('digna', 'srv-appsprod.key'), fingerprint: null },
+  'srv-appsdesa': { host: '10.145.2.165',   user: 'ubuntu', key: SSH('digna', 'srv-appsdesa.key'), fingerprint: null },
+  'srv-faty001':  { host: '172.16.100.150', user: 'fatapp', key: SSH('id_fatapp'),                  fingerprint: null },
+  'srv-nexo':     { host: '18.220.238.99',  user: 'ubuntu', key: SSH('fatapp', 'clavessh_aws.pem'), fingerprint: null },
 };
 
 export { WORKSPACE_ROOT };
