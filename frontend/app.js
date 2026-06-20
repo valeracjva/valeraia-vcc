@@ -497,68 +497,167 @@ async function update() {
 
 // === M10 — SSL ===
 const SSL_STATUS_LABEL = { ok: 'OK', warn: 'WARN', crit: 'CRÍTICO', expired: 'VENCIDO', error: 'ERROR' };
+const SSL_STATUS_ORDER = { expired: 0, crit: 1, warn: 2, ok: 3, error: 4 };
+
+let sslView = 'expiry';
+let sslData  = null;
 
 function updateSSLBadge(summary) {
   const badge = document.getElementById('ssl-header-badge');
   const count = (summary.expired ?? 0) + (summary.crit ?? 0);
-  if (count === 0) {
-    badge.classList.add('hidden');
-    return;
-  }
+  if (count === 0) { badge.classList.add('hidden'); return; }
   badge.classList.remove('hidden');
-  const hasExpired = (summary.expired ?? 0) > 0;
-  badge.classList.toggle('warn', !hasExpired);
+  badge.classList.toggle('warn', (summary.expired ?? 0) === 0);
   badge.textContent = `SSL ⚠ ${count}`;
   badge.onclick = () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-    const btn = document.querySelector('[data-tab="ssl"]');
-    if (btn) btn.classList.add('active');
+    document.querySelector('[data-tab="ssl"]')?.classList.add('active');
     document.getElementById('tab-ssl').classList.remove('hidden');
   };
 }
 
-function renderSSLTable(data) {
-  const container = document.getElementById('ssl-container');
+function sslDaysText(row) {
+  if (row.daysLeft === null) return '—';
+  return row.daysLeft <= 0 ? `${Math.abs(row.daysLeft)}d vencido` : `${row.daysLeft}d`;
+}
 
-  const checkedAt = document.getElementById('ssl-checked-at');
-  if (data.checkedAt) {
-    const d = new Date(data.checkedAt);
-    checkedAt.textContent = `verificado ${d.toLocaleTimeString('es-AR')}${data.cached ? ' (caché)' : ''}`;
+function sslExpiresText(row) {
+  if (row.expiresAt) return new Date(row.expiresAt).toLocaleDateString('es-AR');
+  return row.error ?? '—';
+}
+
+function buildSSLRow(row) {
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td><div class="ssl-domain">${escHtml(row.domain)}</div><div class="ssl-label">${escHtml(row.label)}</div></td>` +
+    `<td><span class="ssl-dot ${row.status}"></span><span class="ssl-status-${row.status}">${SSL_STATUS_LABEL[row.status] ?? row.status}</span></td>` +
+    `<td class="ssl-status-${row.status}">${escHtml(sslDaysText(row))}</td>` +
+    `<td style="color:var(--muted);font-size:0.72rem">${escHtml(sslExpiresText(row))}</td>`;
+  return tr;
+}
+
+// Extrae el dominio raíz (ej: "one.fincos.com.ar" → "fincos.com.ar")
+function rootDomain(domain) {
+  const parts = domain.split('.');
+  const twoLevel = ['com', 'seg', 'org', 'net', 'edu', 'gob', 'int', 'mil'];
+  if (parts.length >= 3 && parts.at(-1) === 'ar' && twoLevel.includes(parts.at(-2))) {
+    return parts.slice(-3).join('.');
   }
+  return parts.slice(-2).join('.');
+}
 
-  updateSSLBadge(data.summary ?? {});
+// Peor estado de un grupo
+function worstStatus(domains) {
+  return domains.reduce((worst, d) =>
+    SSL_STATUS_ORDER[d.status] < SSL_STATUS_ORDER[worst] ? d.status : worst,
+    'ok'
+  );
+}
+
+function renderSSLByExpiry(domains) {
+  const sorted = [...domains].sort((a, b) => {
+    const so = SSL_STATUS_ORDER[a.status] - SSL_STATUS_ORDER[b.status];
+    if (so !== 0) return so;
+    // dentro del mismo estado: menor daysLeft primero (más urgente)
+    const da = a.daysLeft ?? 9999;
+    const db = b.daysLeft ?? 9999;
+    return da - db;
+  });
 
   const table = document.createElement('table');
   table.className = 'ssl-table';
-  table.innerHTML =
-    `<thead><tr>
-      <th>DOMINIO</th>
-      <th>ESTADO</th>
-      <th>DÍAS</th>
-      <th>VENCE</th>
-    </tr></thead>`;
-
+  table.innerHTML = `<thead><tr><th>DOMINIO</th><th>ESTADO</th><th>DÍAS</th><th>VENCE</th></tr></thead>`;
   const tbody = document.createElement('tbody');
-  for (const row of data.domains) {
-    const tr = document.createElement('tr');
-    const daysText = row.daysLeft !== null
-      ? (row.daysLeft <= 0 ? `${Math.abs(row.daysLeft)}d vencido` : `${row.daysLeft}d`)
-      : '—';
-    const expiresText = row.expiresAt
-      ? new Date(row.expiresAt).toLocaleDateString('es-AR')
-      : (row.error ?? '—');
-
-    tr.innerHTML =
-      `<td><div class="ssl-domain">${escHtml(row.domain)}</div><div class="ssl-label">${escHtml(row.label)}</div></td>` +
-      `<td><span class="ssl-dot ${row.status}"></span><span class="ssl-status-${row.status}">${SSL_STATUS_LABEL[row.status] ?? row.status}</span></td>` +
-      `<td class="ssl-status-${row.status}">${escHtml(daysText)}</td>` +
-      `<td style="color:var(--muted);font-size:0.72rem">${escHtml(expiresText)}</td>`;
-    tbody.appendChild(tr);
-  }
+  sorted.forEach(row => tbody.appendChild(buildSSLRow(row)));
   table.appendChild(tbody);
+  return table;
+}
+
+function renderSSLByDomain(domains) {
+  // Agrupar por dominio raíz
+  const groups = {};
+  for (const d of domains) {
+    const root = rootDomain(d.domain);
+    if (!groups[root]) groups[root] = [];
+    groups[root].push(d);
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'ssl-groups';
+
+  for (const [root, items] of Object.entries(groups).sort()) {
+    const worst  = worstStatus(items);
+    const isSingle = items.length === 1 && items[0].domain === root;
+
+    const group = document.createElement('div');
+    group.className = 'ssl-group';
+
+    // Cabecera del grupo
+    const header = document.createElement('div');
+    header.className = 'ssl-group-header';
+    header.innerHTML =
+      `<span class="ssl-group-arrow">▶</span>` +
+      `<span class="ssl-dot ${worst}" style="margin:0 6px 0 4px"></span>` +
+      `<span class="ssl-group-root">${escHtml(root)}</span>` +
+      `<span class="ssl-group-count">(${items.length})</span>`;
+
+    // Contenido colapsable
+    const body = document.createElement('div');
+    body.className = 'ssl-group-body hidden';
+
+    const table = document.createElement('table');
+    table.className = 'ssl-table ssl-table-sub';
+    table.innerHTML = `<thead><tr><th>DOMINIO</th><th>ESTADO</th><th>DÍAS</th><th>VENCE</th></tr></thead>`;
+    const tbody = document.createElement('tbody');
+    // ordenar por estado dentro del grupo
+    [...items].sort((a, b) => SSL_STATUS_ORDER[a.status] - SSL_STATUS_ORDER[b.status])
+              .forEach(row => tbody.appendChild(buildSSLRow(row)));
+    table.appendChild(tbody);
+    body.appendChild(table);
+
+    header.addEventListener('click', () => {
+      const open = !body.classList.contains('hidden');
+      body.classList.toggle('hidden', open);
+      header.querySelector('.ssl-group-arrow').textContent = open ? '▶' : '▼';
+    });
+
+    // Auto-expandir grupos con problemas
+    if (worst === 'expired' || worst === 'crit') {
+      body.classList.remove('hidden');
+      header.querySelector('.ssl-group-arrow').textContent = '▼';
+    }
+
+    group.appendChild(header);
+    if (!isSingle) group.appendChild(body);
+    else {
+      // Un solo dominio que es el root — mostrar directo sin expandir
+      header.querySelector('.ssl-group-arrow').textContent = '—';
+      header.style.cursor = 'default';
+      header.removeEventListener('click', () => {});
+      group.appendChild(body);
+      body.classList.remove('hidden');
+    }
+
+    wrapper.appendChild(group);
+  }
+  return wrapper;
+}
+
+function renderSSLMonitor(data) {
+  const container = document.getElementById('ssl-container');
+  if (data.checkedAt) {
+    const d = new Date(data.checkedAt);
+    document.getElementById('ssl-checked-at').textContent =
+      `verificado ${d.toLocaleTimeString('es-AR')}${data.cached ? ' (caché)' : ''}`;
+  }
+  updateSSLBadge(data.summary ?? {});
   container.innerHTML = '';
-  container.appendChild(table);
+  container.appendChild(
+    sslView === 'domain'
+      ? renderSSLByDomain(data.domains)
+      : renderSSLByExpiry(data.domains)
+  );
 }
 
 async function loadSSL(force = false) {
@@ -567,8 +666,8 @@ async function loadSSL(force = false) {
   document.getElementById('ssl-container').innerHTML =
     '<div class="ssl-loading">Verificando certificados...</div>';
   try {
-    const data = await get(`/api/ssl${force ? '?force=1' : ''}`);
-    renderSSLTable(data);
+    sslData = await get(`/api/ssl${force ? '?force=1' : ''}`);
+    renderSSLMonitor(sslData);
   } catch {
     document.getElementById('ssl-container').innerHTML =
       '<div class="ssl-loading" style="color:var(--red)">Error al verificar certificados</div>';
@@ -719,6 +818,16 @@ function toggleManageMode() {
 function initSSL() {
   document.getElementById('btn-ssl-refresh').addEventListener('click', () => loadSSL(true));
   document.getElementById('btn-ssl-manage').addEventListener('click', toggleManageMode);
+
+  document.querySelectorAll('.btn-ssl-view').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.view === sslView) return;
+      sslView = btn.dataset.view;
+      document.querySelectorAll('.btn-ssl-view').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (sslData) renderSSLMonitor(sslData);
+    });
+  });
 }
 
 // === Init ===

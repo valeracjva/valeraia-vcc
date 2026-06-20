@@ -624,6 +624,28 @@ body {
   font-size: 0.78rem;
 }
 
+.ssl-view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.btn-ssl-view {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.67rem;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+}
+
+.btn-ssl-view:last-child { border-right: none; }
+.btn-ssl-view:hover      { color: var(--text); }
+.btn-ssl-view.active     { background: rgba(0,230,118,0.08); color: var(--green); }
+
 .btn-ssl-manage {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.68rem;
@@ -636,6 +658,58 @@ body {
 }
 
 .btn-ssl-manage:hover { border-color: var(--amber); color: var(--amber); }
+
+/* === Vista Por dominio === */
+.ssl-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ssl-group {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ssl-group-header {
+  display: flex;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+.ssl-group-header:hover { background: rgba(255,255,255,0.02); }
+
+.ssl-group-arrow {
+  font-size: 0.6rem;
+  color: var(--muted);
+  min-width: 0.8rem;
+}
+
+.ssl-group-root {
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+.ssl-group-count {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.ssl-group-body {
+  border-top: 1px solid var(--border);
+}
+
+.ssl-table-sub {
+  background: var(--bg);
+}
+
+.ssl-table-sub td { padding: 0.35rem 0.75rem; }
 
 .ssl-add-row {
   display: flex;
