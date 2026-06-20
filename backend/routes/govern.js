@@ -34,7 +34,9 @@ export default function governRouter(wss) {
     const scriptPath = path.join(WORKSPACE_ROOT, SCRIPTS[script]);
     let child;
     try {
-      child = spawn('pwsh', ['-NoProfile', '-File', scriptPath], {
+      const escaped = scriptPath.replace(/'/g, "''");
+      const cmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & '${escaped}'`;
+      child = spawn('pwsh', ['-NoProfile', '-NonInteractive', '-Command', cmd], {
         cwd: WORKSPACE_ROOT,
         stdio: ['ignore', 'pipe', 'pipe'],
       });

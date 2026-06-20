@@ -9,7 +9,8 @@ export const PATHS = {
   workspaceMap: path.join(WORKSPACE_ROOT, 'WORKSPACE_MAP.md'),
   registry:     path.join(WORKSPACE_ROOT, 'global', 'projects-registry.json'),
   sslWatch:      path.join(WORKSPACE_ROOT, 'workspace-ui', 'ssl-watch.json'),
-  tunnelsConfig: path.join(WORKSPACE_ROOT, 'workspace-ui', 'tunnels-config.json'),
+  tunnelsConfig:   path.join(WORKSPACE_ROOT, 'workspace-ui', 'tunnels-config.json'),
+  serverInventory: path.join(WORKSPACE_ROOT, 'global', 'servers', 'SERVER_INVENTORY.md'),
 };
 
 export const SERVER = {

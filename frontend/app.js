@@ -149,15 +149,71 @@ const CLIENT_LABELS = {
   'all':          'WORKSPACE',
 };
 const CLIENT_ORDER = ['digna-fincos', 'fatapp', 'nexo', 'nre', 'all'];
+const PROJECT_FIELDS = ['name', 'type', 'category', 'status', 'client', 'notes'];
+const ENVIRONMENT_FIELDS = [
+  'name', 'server', 'host', 'remotePath', 'riskLevel', 'url',
+  'openScript', 'sshUser', 'sshKey', 'notes',
+];
 
 let activeProjectId = null;
+let registryData = null;
+let registryHash = null;
+let projectManageMode = false;
+let projectNewMode = false;
+let projectsBannerTimer = null;
 
 async function loadProjects() {
   try {
-    const data = await get('/api/registry');
-    renderProjects(data.projects);
+    const res = await fetch(`${API_BASE}/api/registry`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    registryData = await res.json();
+    registryHash = res.headers.get('X-Registry-Hash') || res.headers.get('ETag')?.replaceAll('"', '') || null;
+    document.getElementById('projects-hash').textContent = registryHash ? registryHash.slice(0, 12) : 'sin hash';
+    renderProjects(registryData.projects);
+    if (projectManageMode) renderProjectManagement();
   } catch (e) {
     console.error('[VCC] loadProjects error:', e.message);
+    showProjectsBanner('No se pudo cargar el registry.', true);
+  }
+}
+
+function showProjectsBanner(message, isError = false) {
+  const banner = document.getElementById('projects-banner');
+  clearTimeout(projectsBannerTimer);
+  banner.textContent = message;
+  banner.className = `projects-banner ${isError ? 'error' : 'ok'}`;
+  projectsBannerTimer = setTimeout(() => banner.classList.add('hidden'), 6000);
+}
+
+async function projectWrite(method, path, payload, successMessage) {
+  if (!registryHash) {
+    showProjectsBanner('Registry sin hash. Recargá antes de guardar.', true);
+    return null;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expectedHash: registryHash, ...payload }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      showProjectsBanner('Registry cambió. Recargá antes de guardar.', true);
+      return null;
+    }
+    if (!res.ok) {
+      showProjectsBanner(body.error || `Error HTTP ${res.status}`, true);
+      return null;
+    }
+
+    projectNewMode = false;
+    await loadProjects();
+    showProjectsBanner(successMessage);
+    return body;
+  } catch {
+    showProjectsBanner('No se pudo conectar con el backend.', true);
+    return null;
   }
 }
 
@@ -171,7 +227,11 @@ function renderProjects(projects) {
   }
 
   container.innerHTML = '';
-  for (const clientKey of CLIENT_ORDER) {
+  const orderedClients = [
+    ...CLIENT_ORDER,
+    ...Object.keys(groups).filter(key => !CLIENT_ORDER.includes(key)),
+  ];
+  for (const clientKey of orderedClients) {
     if (!groups[clientKey]) continue;
     container.appendChild(renderClientGroup(clientKey, groups[clientKey]));
   }
@@ -304,9 +364,302 @@ async function openVSCode(projectId, envName, btn) {
   }, 1500);
 }
 
+function managementField(label, field, value = '', { readOnly = false, required = false, textarea = false } = {}) {
+  const wrapper = document.createElement('label');
+  wrapper.className = `project-form-field${textarea ? ' project-form-field-wide' : ''}`;
+  wrapper.textContent = label;
+  const input = document.createElement(textarea ? 'textarea' : 'input');
+  input.className = 'project-input';
+  input.dataset.field = field;
+  input.value = value ?? '';
+  input.readOnly = readOnly;
+  input.required = required;
+  if (readOnly) input.classList.add('readonly');
+  wrapper.appendChild(input);
+  return wrapper;
+}
+
+function projectMetadataGrid(project, isNew = false) {
+  const grid = document.createElement('div');
+  grid.className = 'project-form-grid';
+  const idField = managementField('ID', 'id', project.id, { readOnly: true });
+  const nameField = managementField('Nombre', 'name', project.name, { required: true });
+  grid.appendChild(idField);
+  grid.appendChild(nameField);
+  grid.appendChild(managementField('Tipo', 'type', project.type, { required: true }));
+  grid.appendChild(managementField('Categoría', 'category', project.category, { required: true }));
+  grid.appendChild(managementField('Estado', 'status', project.status, { required: true }));
+  grid.appendChild(managementField('Cliente', 'client', project.client, { required: true }));
+  grid.appendChild(managementField('Notas', 'notes', project.notes, { textarea: true }));
+  if (isNew) {
+    const idInput = idField.querySelector('input');
+    const nameInput = nameField.querySelector('input');
+    idInput.placeholder = 'automático desde nombre';
+    nameInput.addEventListener('input', () => {
+      idInput.value = previewProjectId(nameInput.value);
+    });
+  }
+  return grid;
+}
+
+function previewProjectId(name) {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function readFields(container, fields) {
+  return Object.fromEntries(fields.map(field => [
+    field,
+    container.querySelector(`[data-field="${field}"]`)?.value.trim() ?? '',
+  ]));
+}
+
+function requiredFieldsPresent(values, fields) {
+  const missing = fields.find(field => !values[field]);
+  if (missing) showProjectsBanner(`Campo obligatorio: ${missing}`, true);
+  return !missing;
+}
+
+function renderNewProjectEditor() {
+  const editor = document.createElement('section');
+  editor.className = 'project-editor project-editor-new';
+  editor.innerHTML = '<div class="project-editor-title">NUEVO PROYECTO</div>';
+  editor.appendChild(projectMetadataGrid({ environments: [] }, true));
+
+  const actions = document.createElement('div');
+  actions.className = 'project-editor-actions';
+  const cancel = document.createElement('button');
+  cancel.className = 'btn-project-secondary';
+  cancel.textContent = 'Cancelar';
+  cancel.addEventListener('click', () => { projectNewMode = false; renderProjectManagement(); });
+  const save = document.createElement('button');
+  save.className = 'btn-project-primary';
+  save.textContent = 'Crear proyecto';
+  save.addEventListener('click', async () => {
+    const values = readFields(editor, PROJECT_FIELDS);
+    if (!requiredFieldsPresent(values, ['name', 'type', 'category', 'status', 'client'])) return;
+    const project = { ...values, environments: [] };
+    if (!project.notes) delete project.notes;
+    await projectWrite('POST', '/api/projects', { project }, `Proyecto ${project.id} creado.`);
+  });
+  actions.append(cancel, save);
+  editor.appendChild(actions);
+  return editor;
+}
+
+function environmentEditor(project, environment = null) {
+  const isNew = !environment;
+  const original = environment || {};
+  const details = document.createElement('details');
+  details.className = 'environment-editor';
+  details.open = isNew;
+
+  const summary = document.createElement('summary');
+  summary.innerHTML = isNew
+    ? '<span class="environment-name">NUEVO AMBIENTE</span>'
+    : `<span class="environment-name">${escHtml(environment.name)}</span><span class="environment-server">${escHtml(environment.server)}</span>`;
+  details.appendChild(summary);
+
+  const grid = document.createElement('div');
+  grid.className = 'environment-form-grid';
+  for (const field of ENVIRONMENT_FIELDS) {
+    grid.appendChild(managementField(field, field, original[field], { required: ['name', 'server'].includes(field), textarea: field === 'notes' }));
+  }
+  details.appendChild(grid);
+
+  const actions = document.createElement('div');
+  actions.className = 'environment-actions';
+  if (isNew) {
+    const cancel = document.createElement('button');
+    cancel.className = 'btn-project-secondary';
+    cancel.textContent = 'Cancelar';
+    cancel.addEventListener('click', () => details.remove());
+    actions.appendChild(cancel);
+  } else {
+    const remove = document.createElement('button');
+    remove.className = 'btn-project-danger';
+    remove.textContent = 'Eliminar ambiente';
+    remove.addEventListener('click', async () => {
+      const confirmed = await confirmDialog(
+        'Eliminar ambiente',
+        `Se eliminará ${project.id}/${environment.name}.`,
+        true,
+      );
+      if (!confirmed) return;
+      await projectWrite(
+        'DELETE',
+        `/api/projects/${encodeURIComponent(project.id)}/environments/${encodeURIComponent(environment.name)}`,
+        {},
+        `Ambiente ${environment.name} eliminado.`,
+      );
+    });
+    actions.appendChild(remove);
+  }
+
+  const save = document.createElement('button');
+  save.className = 'btn-project-primary';
+  save.textContent = isNew ? 'Agregar ambiente' : 'Guardar ambiente';
+  save.addEventListener('click', async () => {
+    const values = readFields(details, ENVIRONMENT_FIELDS);
+    if (!requiredFieldsPresent(values, ['name', 'server'])) return;
+    if (!!values.host !== !!values.remotePath) {
+      showProjectsBanner('host y remotePath deben completarse juntos.', true);
+      return;
+    }
+
+    if (isNew) {
+      const clean = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
+      await projectWrite(
+        'POST',
+        `/api/projects/${encodeURIComponent(project.id)}/environments`,
+        { environment: clean },
+        `Ambiente ${clean.name} agregado.`,
+      );
+      return;
+    }
+
+    const changes = {};
+    for (const field of ENVIRONMENT_FIELDS) {
+      if (values[field] !== String(original[field] ?? '')) changes[field] = values[field];
+    }
+    await projectWrite(
+      'PATCH',
+      `/api/projects/${encodeURIComponent(project.id)}/environments/${encodeURIComponent(environment.name)}`,
+      { changes },
+      `Ambiente ${environment.name} actualizado.`,
+    );
+  });
+  actions.appendChild(save);
+  details.appendChild(actions);
+  return details;
+}
+
+function renderProjectEditor(project) {
+  const details = document.createElement('details');
+  details.className = 'project-editor';
+  details.dataset.projectId = project.id;
+
+  const summary = document.createElement('summary');
+  const environments = project.environments?.length ?? 0;
+  summary.innerHTML =
+    `<span class="project-editor-id">${escHtml(project.id)}</span>` +
+    `<span class="project-editor-name">${escHtml(project.name)}</span>` +
+    `<span class="project-editor-count">${environments} env</span>`;
+  details.appendChild(summary);
+
+  const content = document.createElement('div');
+  content.className = 'project-editor-content';
+  content.appendChild(projectMetadataGrid(project));
+
+  const metadataActions = document.createElement('div');
+  metadataActions.className = 'project-editor-actions';
+  const remove = document.createElement('button');
+  remove.className = 'btn-project-danger';
+  remove.textContent = 'Eliminar proyecto';
+  remove.addEventListener('click', async () => {
+    const confirmed = await confirmDialog(
+      'Eliminar proyecto',
+      `Escribí ${project.id} para confirmar la eliminación.`,
+      true,
+      project.id,
+    );
+    if (!confirmed) return;
+    await projectWrite(
+      'DELETE',
+      `/api/projects/${encodeURIComponent(project.id)}`,
+      {},
+      `Proyecto ${project.id} eliminado.`,
+    );
+  });
+
+  const save = document.createElement('button');
+  save.className = 'btn-project-primary';
+  save.textContent = 'Guardar metadata';
+  save.addEventListener('click', async () => {
+    const values = readFields(content, PROJECT_FIELDS);
+    if (!requiredFieldsPresent(values, ['name', 'type', 'category', 'status', 'client'])) return;
+    const changes = {};
+    for (const field of PROJECT_FIELDS) {
+      if (values[field] !== String(project[field] ?? '')) changes[field] = values[field];
+    }
+    await projectWrite(
+      'PATCH',
+      `/api/projects/${encodeURIComponent(project.id)}`,
+      { changes },
+      `Proyecto ${project.id} actualizado.`,
+    );
+  });
+  metadataActions.append(remove, save);
+  content.appendChild(metadataActions);
+
+  if (project.access && project.environments === undefined) {
+    const access = document.createElement('div');
+    access.className = 'project-access-readonly';
+    access.innerHTML = '<div class="project-subtitle">ACCESS · SOLO LECTURA</div>' +
+      `<pre>${escHtml(JSON.stringify(project.access, null, 2))}</pre>`;
+    content.appendChild(access);
+  } else {
+    const environmentsHeader = document.createElement('div');
+    environmentsHeader.className = 'project-environments-header';
+    environmentsHeader.innerHTML = '<span class="project-subtitle">AMBIENTES</span>';
+    const addEnvironment = document.createElement('button');
+    addEnvironment.className = 'btn-project-secondary';
+    addEnvironment.textContent = '＋ Ambiente';
+    environmentsHeader.appendChild(addEnvironment);
+
+    const environmentList = document.createElement('div');
+    environmentList.className = 'environment-editor-list';
+    for (const environment of (project.environments || [])) {
+      environmentList.appendChild(environmentEditor(project, environment));
+    }
+    addEnvironment.addEventListener('click', () => {
+      const editor = environmentEditor(project);
+      environmentList.prepend(editor);
+      editor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    content.append(environmentsHeader, environmentList);
+  }
+
+  details.appendChild(content);
+  return details;
+}
+
+function renderProjectManagement() {
+  const container = document.getElementById('projects-manage-container');
+  container.innerHTML = '';
+  if (!registryData) return;
+  if (projectNewMode) container.appendChild(renderNewProjectEditor());
+  for (const project of registryData.projects) container.appendChild(renderProjectEditor(project));
+}
+
+function toggleProjectManagement(force) {
+  projectManageMode = force === undefined ? !projectManageMode : force;
+  document.getElementById('projects-container').classList.toggle('hidden', projectManageMode);
+  document.getElementById('projects-manage-container').classList.toggle('hidden', !projectManageMode);
+  document.getElementById('btn-project-manage').textContent = projectManageMode ? '← Vista' : '⚙ Gestionar';
+  if (projectManageMode) renderProjectManagement();
+}
+
+function initProjects() {
+  document.getElementById('btn-project-manage').addEventListener('click', () => {
+    projectNewMode = false;
+    toggleProjectManagement();
+  });
+  document.getElementById('btn-project-add').addEventListener('click', () => {
+    projectNewMode = true;
+    toggleProjectManagement(true);
+    renderProjectManagement();
+    document.querySelector('.project-editor-new')?.scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
 // === M12 — Briefing ===
 function escHtml(str) {
-  return str
+  return String(str ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
@@ -692,25 +1045,36 @@ let tunnelAdhocMode  = false;
 
 // ── Modal de confirmación ─────────────────────────────────────────────────────
 
-function confirmDialog(title, body, danger = false) {
+function confirmDialog(title, body, danger = false, expectedText = null) {
   return new Promise((resolve) => {
     document.getElementById('confirm-title').textContent = title;
     document.getElementById('confirm-body').textContent  = body;
     const ok     = document.getElementById('confirm-ok');
     const cancel = document.getElementById('confirm-cancel');
+    const input  = document.getElementById('confirm-input');
     ok.className = danger ? 'btn-modal-ok danger' : 'btn-modal-ok';
+    input.classList.toggle('hidden', !expectedText);
+    input.value = '';
+    input.placeholder = expectedText ? `Escribí ${expectedText}` : '';
+    ok.disabled = !!expectedText;
     document.getElementById('confirm-modal').classList.remove('hidden');
+    if (expectedText) input.focus();
 
     function cleanup(result) {
       document.getElementById('confirm-modal').classList.add('hidden');
       ok.removeEventListener('click', onOk);
       cancel.removeEventListener('click', onCancel);
+      input.removeEventListener('input', onInput);
+      input.classList.add('hidden');
+      ok.disabled = false;
       resolve(result);
     }
     const onOk     = () => cleanup(true);
     const onCancel = () => cleanup(false);
+    const onInput  = () => { ok.disabled = input.value !== expectedText; };
     ok.addEventListener('click', onOk);
     cancel.addEventListener('click', onCancel);
+    input.addEventListener('input', onInput);
   });
 }
 
@@ -1196,16 +1560,122 @@ function initTunnels() {
   });
 }
 
+// === M4 — Inventario Infra ===
+const RISK_COLORS = {
+  bajo:     '#00E676',
+  moderado: '#FFD600',
+  alto:     '#FF6D00',
+  critico:  '#FF1744',
+};
+const RISK_LABELS = {
+  bajo: 'BAJO', moderado: 'MOD', alto: 'ALTO', critico: 'CRIT',
+};
+
+function buildServerCard(srv) {
+  const card = document.createElement('div');
+  card.className = `infra-card risk-${srv.riesgo}`;
+
+  const riskColor = RISK_COLORS[srv.riesgo] ?? '#888';
+  const riskLabel = RISK_LABELS[srv.riesgo] ?? srv.riesgo.toUpperCase();
+
+  const hasDetails = srv.apps.length > 0 || srv.dominios.length > 0 || srv.containers;
+
+  card.innerHTML =
+    `<div class="infra-card-header">` +
+      `<span class="infra-dot" style="background:${riskColor}"></span>` +
+      `<span class="infra-id">${escHtml(srv.id)}</span>` +
+      `<span class="infra-risk-badge" style="color:${riskColor};border-color:${riskColor}">${riskLabel}</span>` +
+    `</div>` +
+    `<div class="infra-ip">${escHtml(srv.ip)}</div>` +
+    `<div class="infra-os">${escHtml(srv.os)}</div>` +
+    `<div class="infra-empresa">${escHtml(srv.empresa)}</div>` +
+    `<div class="infra-rol">${escHtml(srv.rol)}</div>` +
+    (srv.sshUser ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${srv.mysqlTunel.split(' ')[1]}` : ''}</div>` : '') +
+    (srv.puerto  ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
+    (hasDetails  ?
+      `<div class="infra-toggle" data-open="false">` +
+        `<span class="infra-arrow">▶</span>` +
+        `<span class="infra-toggle-label">${buildToggleLabel(srv)}</span>` +
+      `</div>` +
+      `<div class="infra-details hidden">` +
+        buildDetails(srv) +
+      `</div>`
+    : '');
+
+  if (hasDetails) {
+    const toggle  = card.querySelector('.infra-toggle');
+    const details = card.querySelector('.infra-details');
+    toggle.addEventListener('click', () => {
+      const open = toggle.dataset.open === 'true';
+      toggle.dataset.open = String(!open);
+      toggle.querySelector('.infra-arrow').textContent = open ? '▶' : '▼';
+      details.classList.toggle('hidden', open);
+    });
+  }
+
+  return card;
+}
+
+function buildToggleLabel(srv) {
+  const parts = [];
+  if (srv.apps.length)    parts.push(`${srv.apps.length} app${srv.apps.length > 1 ? 's' : ''}`);
+  if (srv.dominios.length) parts.push(`${srv.dominios.length} dominio${srv.dominios.length > 1 ? 's' : ''}`);
+  if (srv.containers)      parts.push(`${srv.containers.total} contenedores`);
+  return parts.join(' · ');
+}
+
+function buildDetails(srv) {
+  let html = '';
+  if (srv.apps.length) {
+    html += `<div class="infra-detail-section"><span class="infra-detail-label">Apps</span>`;
+    html += srv.apps.map(a =>
+      `<div class="infra-detail-item"><code>${escHtml(a.name)}</code>${a.desc ? `<span class="infra-detail-desc"> — ${escHtml(a.desc)}</span>` : ''}</div>`
+    ).join('');
+    html += `</div>`;
+  }
+  if (srv.dominios.length) {
+    html += `<div class="infra-detail-section"><span class="infra-detail-label">Dominios</span>`;
+    html += srv.dominios.map(d => `<div class="infra-detail-item">${escHtml(d)}</div>`).join('');
+    html += `</div>`;
+  }
+  if (srv.containers) {
+    const { total, healthy, unhealthy } = srv.containers;
+    const unhealthyColor = unhealthy > 0 ? 'var(--red)' : 'inherit';
+    html +=
+      `<div class="infra-detail-section"><span class="infra-detail-label">Docker</span>` +
+      `<div class="infra-detail-item">${healthy} healthy` +
+      (unhealthy > 0 ? ` · <span style="color:${unhealthyColor}">${unhealthy} unhealthy</span>` : '') +
+      ` / ${total} total</div></div>`;
+  }
+  return html;
+}
+
+async function loadInventory() {
+  const c = document.getElementById('infra-container');
+  c.innerHTML = '<div class="infra-loading">Cargando inventario...</div>';
+  try {
+    const { servers } = await get('/api/inventory');
+    c.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'infra-grid';
+    for (const srv of servers) grid.appendChild(buildServerCard(srv));
+    c.appendChild(grid);
+  } catch (err) {
+    c.innerHTML = `<div class="infra-loading" style="color:var(--red)">Error al cargar inventario: ${escHtml(err.message)}</div>`;
+  }
+}
+
 // === Init ===
 async function init() {
   initTabs();
+  initProjects();
   renderGovern();
   initSSL();
   initTunnels();
   connectWS();
   await update();
   await loadProjects();
-  await Promise.all([loadSSL(), loadTunnels()]);
+  await Promise.all([loadSSL(), loadTunnels(), loadInventory()]);
   setInterval(update, POLL_MS);
 }
 

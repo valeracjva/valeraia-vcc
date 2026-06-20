@@ -16,6 +16,7 @@ import tunnelsRouter   from './routes/tunnels.js';
 import projectsRouter  from './routes/projects.js';
 import governRouter    from './routes/govern.js';
 import sslRouter       from './routes/ssl.js';
+import inventoryRouter from './routes/inventory.js';
 
 const app = express();
 
@@ -32,7 +33,7 @@ app.use((req, res, next) => {
   if (isLocalOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
@@ -47,6 +48,7 @@ app.use('/api/status',    statusRouter);
 app.use('/api/tunnels',   tunnelsRouter);
 app.use('/api/projects',  projectsRouter);
 app.use('/api/ssl',       sslRouter);
+app.use('/api/inventory', inventoryRouter);
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({
