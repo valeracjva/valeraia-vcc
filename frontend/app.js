@@ -314,6 +314,7 @@ const GOVERN_SCRIPTS = [
 
 function renderGovern() {
   const grid = document.getElementById('govern-grid');
+  if (!grid) return;
   for (const s of GOVERN_SCRIPTS) {
     const btn = document.createElement('button');
     btn.className = 'govern-btn';
@@ -392,7 +393,8 @@ function connectWS() {
     }
   };
 
-  ws.onclose = () => setTimeout(connectWS, 3000);
+  ws.onerror  = () => showError(true);
+  ws.onclose  = () => setTimeout(connectWS, 3000);
 }
 
 // === Update principal (polling 30s) ===
