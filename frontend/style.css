@@ -1262,6 +1262,48 @@ textarea.project-input { min-height: 3.4rem; resize: vertical; }
 }
 .infra-detail-desc { color: var(--muted); }
 
+/* === M13 — Métricas de servidores === */
+.infra-metrics {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+.metric-row {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr 2.6rem;
+  align-items: center;
+  gap: 0.3rem;
+}
+.metric-label {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.metric-bar-track {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.metric-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.metric-value {
+  font-size: 0.62rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.metric-unreachable {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+  font-style: italic;
+}
+
 @media (max-width: 900px) {
   .project-form-grid,
   .environment-form-grid { grid-template-columns: 1fr 1fr; }

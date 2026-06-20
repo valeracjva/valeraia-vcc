@@ -1574,6 +1574,7 @@ const RISK_LABELS = {
 function buildServerCard(srv) {
   const card = document.createElement('div');
   card.className = `infra-card risk-${srv.riesgo}`;
+  card.dataset.server = srv.id;
 
   const riskColor = RISK_COLORS[srv.riesgo] ?? '#888';
   const riskLabel = RISK_LABELS[srv.riesgo] ?? srv.riesgo.toUpperCase();
@@ -1658,12 +1659,62 @@ async function loadInventory() {
     c.innerHTML = '';
     const grid = document.createElement('div');
     grid.className = 'infra-grid';
+    grid.id = 'infra-grid';
     for (const srv of servers) grid.appendChild(buildServerCard(srv));
     c.appendChild(grid);
   } catch (err) {
     c.innerHTML = `<div class="infra-loading" style="color:var(--red)">Error al cargar inventario: ${escHtml(err.message)}</div>`;
   }
 }
+
+// === M13 — Métricas de servidores ===
+function metricBar(label, pct) {
+  const clamped = Math.min(100, Math.max(0, pct));
+  const color = clamped >= 85 ? 'var(--red)' : clamped >= 70 ? 'var(--amber)' : 'var(--green)';
+  return (
+    `<div class="metric-row">` +
+      `<span class="metric-label">${label}</span>` +
+      `<div class="metric-bar-track">` +
+        `<div class="metric-bar-fill" style="width:${clamped}%;background:${color}"></div>` +
+      `</div>` +
+      `<span class="metric-value" style="color:${color}">${clamped}%</span>` +
+    `</div>`
+  );
+}
+
+function applyMetrics(m) {
+  const card = document.querySelector(`#infra-grid .infra-card[data-server="${escHtml(m.serverId)}"]`);
+  if (!card) return;
+
+  let metricsEl = card.querySelector('.infra-metrics');
+  if (!metricsEl) {
+    metricsEl = document.createElement('div');
+    metricsEl.className = 'infra-metrics';
+    // Insertar antes del toggle o al final
+    const toggle = card.querySelector('.infra-toggle');
+    if (toggle) card.insertBefore(metricsEl, toggle);
+    else card.appendChild(metricsEl);
+  }
+
+  if (m.status !== 'ok') {
+    metricsEl.innerHTML = `<div class="metric-unreachable">— sin acceso</div>`;
+    return;
+  }
+
+  metricsEl.innerHTML =
+    metricBar('CPU', m.cpu.pct) +
+    metricBar('RAM', m.ram.pct) +
+    metricBar('DSK', m.disk.pct);
+}
+
+async function loadMetrics() {
+  try {
+    const { metrics } = await get('/api/metrics');
+    for (const m of metrics) applyMetrics(m);
+  } catch { /* silencioso — las cards ya están visibles */ }
+}
+
+const METRICS_INTERVAL_MS = 60_000;
 
 // === Init ===
 async function init() {
@@ -1676,6 +1727,9 @@ async function init() {
   await update();
   await loadProjects();
   await Promise.all([loadSSL(), loadTunnels(), loadInventory()]);
+  // Métricas después del inventario (cards deben existir)
+  loadMetrics();
+  setInterval(loadMetrics, METRICS_INTERVAL_MS);
   setInterval(update, POLL_MS);
 }
 

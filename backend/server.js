@@ -17,6 +17,7 @@ import projectsRouter  from './routes/projects.js';
 import governRouter    from './routes/govern.js';
 import sslRouter       from './routes/ssl.js';
 import inventoryRouter from './routes/inventory.js';
+import metricsRouter   from './routes/metrics.js';
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/tunnels',   tunnelsRouter);
 app.use('/api/projects',  projectsRouter);
 app.use('/api/ssl',       sslRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/metrics',   metricsRouter);
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({
