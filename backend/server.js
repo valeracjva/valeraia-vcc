@@ -14,7 +14,8 @@ import registryRouter  from './routes/registry.js';
 import statusRouter    from './routes/status.js';
 import tunnelsRouter   from './routes/tunnels.js';
 import projectsRouter  from './routes/projects.js';
-import governRouter from './routes/govern.js';
+import governRouter    from './routes/govern.js';
+import sslRouter       from './routes/ssl.js';
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/registry',  registryRouter);
 app.use('/api/status',    statusRouter);
 app.use('/api/tunnels',   tunnelsRouter);
 app.use('/api/projects',  projectsRouter);
+app.use('/api/ssl',       sslRouter);
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({

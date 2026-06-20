@@ -1,0 +1,83 @@
+import { Router } from 'express';
+import tls from 'tls';
+import { readFile } from 'fs/promises';
+import { PATHS } from '../config.js';
+
+const router = Router();
+
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutos
+let cache = null;
+
+function classifyDays(daysLeft) {
+  if (daysLeft <= 0)  return 'expired';
+  if (daysLeft <= 14) return 'crit';
+  if (daysLeft <= 30) return 'warn';
+  return 'ok';
+}
+
+function checkDomain(domain) {
+  return new Promise((resolve) => {
+    // rejectUnauthorized:false es intencional: necesitamos leer el cert incluso cuando
+    // está vencido o es inválido. Solo leemos metadatos, no enviamos datos sensibles.
+    // Equivalente a: openssl s_client -connect domain:443
+    const socket = tls.connect(443, domain, {
+      servername: domain,
+      rejectUnauthorized: false,
+      timeout: 7000,
+    });
+
+    const cleanup = (result) => {
+      socket.destroy();
+      resolve(result);
+    };
+
+    socket.on('secureConnect', () => {
+      const cert = socket.getPeerCertificate();
+      if (!cert || !cert.valid_to) {
+        return cleanup({ status: 'error', error: 'sin certificado', daysLeft: null, expiresAt: null });
+      }
+      const expiresAt = new Date(cert.valid_to);
+      const daysLeft  = Math.floor((expiresAt - Date.now()) / 86_400_000);
+      cleanup({ status: classifyDays(daysLeft), daysLeft, expiresAt: expiresAt.toISOString(), error: null });
+    });
+
+    socket.on('error',   (err) => cleanup({ status: 'error', error: err.message, daysLeft: null, expiresAt: null }));
+    socket.on('timeout', ()    => cleanup({ status: 'error', error: 'timeout',   daysLeft: null, expiresAt: null }));
+  });
+}
+
+async function runChecks() {
+  const raw  = await readFile(PATHS.sslWatch, 'utf8');
+  const list = JSON.parse(raw).domains;
+
+  const results = await Promise.all(
+    list.map(async ({ domain, label }) => {
+      const check = await checkDomain(domain);
+      return { domain, label, ...check };
+    })
+  );
+
+  const summary = { ok: 0, warn: 0, crit: 0, expired: 0, error: 0 };
+  for (const r of results) summary[r.status]++;
+
+  return { domains: results, summary, checkedAt: new Date().toISOString() };
+}
+
+router.get('/', async (req, res, next) => {
+  try {
+    const force = req.query.force === '1';
+    const now   = Date.now();
+
+    if (!force && cache && (now - cache.ts) < CACHE_TTL_MS) {
+      return res.json({ ...cache.data, cached: true });
+    }
+
+    const data = await runChecks();
+    cache = { ts: now, data };
+    res.json({ ...data, cached: false });
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;

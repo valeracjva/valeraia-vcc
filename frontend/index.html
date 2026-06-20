@@ -15,6 +15,7 @@
   <header class="header">
     <span class="logo">◆ VCC</span>
     <span class="header-host" id="host">—</span>
+    <span id="ssl-header-badge" class="ssl-header-badge hidden"></span>
     <span class="freshness-badge">
       <span class="dot" id="freshness-dot"></span>
       <span id="freshness-label">—</span>
@@ -89,6 +90,7 @@
         <button class="tab-btn" data-tab="briefing">Briefing</button>
         <button class="tab-btn active" data-tab="proyectos">Proyectos</button>
         <button class="tab-btn" data-tab="gobernanza">Gobernanza</button>
+        <button class="tab-btn" data-tab="ssl">SSL</button>
       </nav>
 
       <div class="tab-panel hidden" id="tab-briefing"></div>
@@ -104,6 +106,14 @@
           <button class="btn-clear" id="btn-clear">Limpiar</button>
         </div>
         <div class="output-panel" id="output-panel"></div>
+      </div>
+
+      <div class="tab-panel hidden" id="tab-ssl">
+        <div class="ssl-toolbar">
+          <span class="ssl-checked-at" id="ssl-checked-at">—</span>
+          <button class="btn-ssl-refresh" id="btn-ssl-refresh">↻ Verificar ahora</button>
+        </div>
+        <div id="ssl-container"></div>
       </div>
     </main>
   </div>

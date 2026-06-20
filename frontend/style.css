@@ -519,3 +519,107 @@ body {
 .brief-p2 .brief-p-text { color: var(--text); }
 .brief-p3 .brief-p-text { color: var(--muted); }
 .brief-p4 .brief-p-text { color: var(--muted); }
+
+/* === M10 — SSL / Dominios === */
+
+.ssl-header-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(255, 82, 82, 0.12);
+  border: 1px solid rgba(255, 82, 82, 0.4);
+  color: var(--red);
+  cursor: pointer;
+}
+
+.ssl-header-badge.warn {
+  background: rgba(255, 171, 64, 0.12);
+  border-color: rgba(255, 171, 64, 0.4);
+  color: var(--amber);
+}
+
+.ssl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.ssl-checked-at {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.btn-ssl-refresh {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 3px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+}
+
+.btn-ssl-refresh:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+.btn-ssl-refresh:disabled              { opacity: 0.4; cursor: not-allowed; }
+
+.ssl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.ssl-table th {
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+}
+
+.ssl-table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.ssl-table tr:last-child td { border-bottom: none; }
+
+.ssl-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.ssl-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.ssl-dot.ok      { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.ssl-dot.warn    { background: var(--amber); box-shadow: 0 0 5px var(--amber); }
+.ssl-dot.crit    { background: var(--red);   box-shadow: 0 0 5px var(--red); }
+.ssl-dot.expired { background: var(--red);   }
+.ssl-dot.error   { background: var(--muted); }
+
+.ssl-status-ok      { color: var(--green); }
+.ssl-status-warn    { color: var(--amber); }
+.ssl-status-crit    { color: var(--red); }
+.ssl-status-expired { color: var(--red); font-weight: 600; }
+.ssl-status-error   { color: var(--muted); }
+
+.ssl-domain { color: var(--text); font-size: 0.75rem; }
+.ssl-label  { color: var(--muted); font-size: 0.68rem; }
+
+.ssl-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+}

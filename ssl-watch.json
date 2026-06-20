@@ -1,0 +1,23 @@
+{
+  "domains": [
+    { "domain": "one.fincos.com.ar",               "label": "Fincos ONE prod"         },
+    { "domain": "onetest.fincos.com.ar",            "label": "Fincos ONE test"         },
+    { "domain": "onedesa.fincos.com.ar",            "label": "Fincos ONE desa"         },
+    { "domain": "webtest.fincos.com.ar",            "label": "Fincos Web test"         },
+    { "domain": "inspecciones.digna.seg.ar",        "label": "Inspecciones prod"       },
+    { "domain": "inspeccionestest.digna.seg.ar",    "label": "Inspecciones test"       },
+    { "domain": "autogestion.digna.seg.ar",         "label": "Autogestion prod"        },
+    { "domain": "autogestiontest.digna.seg.ar",     "label": "Autogestion test"        },
+    { "domain": "terceros.digna.seg.ar",            "label": "Terceros prod"           },
+    { "domain": "tercerostest.digna.seg.ar",        "label": "Terceros test"           },
+    { "domain": "equis.nreseguros.seg.ar",          "label": "NRE Equis"               },
+    { "domain": "pasnet.nreseguros.seg.ar",         "label": "NRE Pasnet"              },
+    { "domain": "cobranzas.nreseguros.seg.ar",      "label": "NRE Cobranzas"           },
+    { "domain": "equis.auroraseguros.com.ar",       "label": "Aurora Equis"            },
+    { "domain": "pasnet.auroraseguros.com.ar",      "label": "Aurora Pasnet"           },
+    { "domain": "auroraseguros.com.ar",             "label": "Aurora dominio (vencido)"},
+    { "domain": "fatapp.com.ar",                    "label": "FatApp sitio"            },
+    { "domain": "automatizaciones.fatapp.com.ar",   "label": "FatApp n8n"              },
+    { "domain": "apptest.nexogestionderiesgos.com", "label": "Nexo apptest"            }
+  ]
+}

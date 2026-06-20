@@ -495,13 +495,101 @@ async function update() {
   }
 }
 
+// === M10 — SSL ===
+const SSL_STATUS_LABEL = { ok: 'OK', warn: 'WARN', crit: 'CRÍTICO', expired: 'VENCIDO', error: 'ERROR' };
+
+function updateSSLBadge(summary) {
+  const badge = document.getElementById('ssl-header-badge');
+  const count = (summary.expired ?? 0) + (summary.crit ?? 0);
+  if (count === 0) {
+    badge.classList.add('hidden');
+    return;
+  }
+  badge.classList.remove('hidden');
+  const hasExpired = (summary.expired ?? 0) > 0;
+  badge.classList.toggle('warn', !hasExpired);
+  badge.textContent = `SSL ⚠ ${count}`;
+  badge.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    const btn = document.querySelector('[data-tab="ssl"]');
+    if (btn) btn.classList.add('active');
+    document.getElementById('tab-ssl').classList.remove('hidden');
+  };
+}
+
+function renderSSLTable(data) {
+  const container = document.getElementById('ssl-container');
+
+  const checkedAt = document.getElementById('ssl-checked-at');
+  if (data.checkedAt) {
+    const d = new Date(data.checkedAt);
+    checkedAt.textContent = `verificado ${d.toLocaleTimeString('es-AR')}${data.cached ? ' (caché)' : ''}`;
+  }
+
+  updateSSLBadge(data.summary ?? {});
+
+  const table = document.createElement('table');
+  table.className = 'ssl-table';
+  table.innerHTML =
+    `<thead><tr>
+      <th>DOMINIO</th>
+      <th>ESTADO</th>
+      <th>DÍAS</th>
+      <th>VENCE</th>
+    </tr></thead>`;
+
+  const tbody = document.createElement('tbody');
+  for (const row of data.domains) {
+    const tr = document.createElement('tr');
+    const daysText = row.daysLeft !== null
+      ? (row.daysLeft <= 0 ? `${Math.abs(row.daysLeft)}d vencido` : `${row.daysLeft}d`)
+      : '—';
+    const expiresText = row.expiresAt
+      ? new Date(row.expiresAt).toLocaleDateString('es-AR')
+      : (row.error ?? '—');
+
+    tr.innerHTML =
+      `<td><div class="ssl-domain">${escHtml(row.domain)}</div><div class="ssl-label">${escHtml(row.label)}</div></td>` +
+      `<td><span class="ssl-dot ${row.status}"></span><span class="ssl-status-${row.status}">${SSL_STATUS_LABEL[row.status] ?? row.status}</span></td>` +
+      `<td class="ssl-status-${row.status}">${escHtml(daysText)}</td>` +
+      `<td style="color:var(--muted);font-size:0.72rem">${escHtml(expiresText)}</td>`;
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+
+async function loadSSL(force = false) {
+  const btn = document.getElementById('btn-ssl-refresh');
+  btn.disabled = true;
+  document.getElementById('ssl-container').innerHTML =
+    '<div class="ssl-loading">Verificando certificados...</div>';
+  try {
+    const data = await get(`/api/ssl${force ? '?force=1' : ''}`);
+    renderSSLTable(data);
+  } catch {
+    document.getElementById('ssl-container').innerHTML =
+      '<div class="ssl-loading" style="color:var(--red)">Error al verificar certificados</div>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function initSSL() {
+  document.getElementById('btn-ssl-refresh').addEventListener('click', () => loadSSL(true));
+}
+
 // === Init ===
 async function init() {
   initTabs();
   renderGovern();
+  initSSL();
   connectWS();
   await update();
   await loadProjects();
+  await loadSSL();
   setInterval(update, POLL_MS);
 }
 

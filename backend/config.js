@@ -8,6 +8,7 @@ export const PATHS = {
   index:        path.join(WORKSPACE_ROOT, 'knowledge', 'INDEX.md'),
   workspaceMap: path.join(WORKSPACE_ROOT, 'WORKSPACE_MAP.md'),
   registry:     path.join(WORKSPACE_ROOT, 'global', 'projects-registry.json'),
+  sslWatch:     path.join(WORKSPACE_ROOT, 'workspace-ui', 'ssl-watch.json'),
 };
 
 export const SERVER = {
