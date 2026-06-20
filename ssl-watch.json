@@ -17,7 +17,13 @@
     { "domain": "pasnet.auroraseguros.com.ar",      "label": "Aurora Pasnet"           },
     { "domain": "auroraseguros.com.ar",             "label": "Aurora dominio (vencido)"},
     { "domain": "fatapp.com.ar",                    "label": "FatApp sitio"            },
+    { "domain": "home.fatapp.com.ar",               "label": "FatApp Home prod"        },
+    { "domain": "hometest.fatapp.com.ar",           "label": "FatApp Home test"        },
+    { "domain": "homedesa.fatapp.com.ar",           "label": "FatApp Home desa"        },
     { "domain": "automatizaciones.fatapp.com.ar",   "label": "FatApp n8n"              },
+    { "domain": "n8n.fatapp.com.ar",                "label": "FatApp n8n alt"          },
+    { "domain": "equistest.nreseguros.seg.ar",      "label": "NRE Equis test"          },
+    { "domain": "pastest.nreseguros.seg.ar",        "label": "NRE Pasnet test"         },
     { "domain": "apptest.nexogestionderiesgos.com", "label": "Nexo apptest"            }
   ]
 }
