@@ -126,10 +126,40 @@
       </div>
 
       <div class="tab-panel hidden" id="tab-tuneles">
+        <div class="ssl-toolbar">
+          <span></span>
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn-ssl-refresh" id="btn-tunnel-adhoc">＋ Ad-hoc</button>
+            <button class="btn-ssl-manage"  id="btn-tunnel-manage">⚙ Gestionar</button>
+          </div>
+        </div>
         <div id="tunnels-container"></div>
+        <div id="tunnels-adhoc-container"  class="hidden"></div>
+        <div id="tunnels-manage-container" class="hidden"></div>
       </div>
     </main>
   </div>
+
+  <!-- Modal de confirmación reutilizable -->
+  <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-title"   id="confirm-title"></div>
+      <p   class="modal-body"    id="confirm-body"></p>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="confirm-cancel">Cancelar</button>
+        <button class="btn-modal-ok"     id="confirm-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Datalist de claves SSH conocidas para el formulario ad-hoc -->
+  <datalist id="ssh-keys-list">
+    <option value=".ssh/id_fatapp">
+    <option value=".ssh/digna/srv-appstest.key">
+    <option value=".ssh/digna/srv-appsprod.key">
+    <option value=".ssh/digna/srv-appsdesa.key">
+    <option value=".ssh/fatapp/clavessh_aws.pem">
+  </datalist>
 
   <script type="module" src="app.js"></script>
 </body>

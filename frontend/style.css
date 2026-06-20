@@ -811,6 +811,123 @@ body {
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
+.badge-adhoc {
+  font-size: 0.6rem;
+  background: rgba(100, 200, 255, 0.12);
+  color: #64c8ff;
+  border: 1px solid rgba(100, 200, 255, 0.25);
+  border-radius: 2px;
+  padding: 0.05rem 0.3rem;
+}
+
+.tunnel-card.tunnel-adhoc {
+  border-style: dashed;
+  opacity: 0.92;
+}
+
+/* === Modal de confirmación === */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay.hidden { display: none; }
+
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.5rem;
+  width: 420px;
+  max-width: 90vw;
+}
+
+.modal-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+}
+
+.modal-body {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.btn-modal-cancel,
+.btn-modal-ok {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--muted);
+}
+
+.btn-modal-cancel:hover { color: var(--text); border-color: var(--text); }
+.btn-modal-ok           { color: var(--green); border-color: rgba(0,230,118,0.3); }
+.btn-modal-ok:hover     { background: rgba(0,230,118,0.08); }
+.btn-modal-ok.danger    { color: var(--red); border-color: rgba(255,82,82,0.3); }
+.btn-modal-ok.danger:hover { background: rgba(255,82,82,0.08); }
+
+/* === Ad-hoc form === */
+.tunnel-adhoc-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+}
+
+.tunnel-adhoc-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+  opacity: 0.8;
+}
+
+.tunnel-adhoc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tunnel-adhoc-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.tunnel-adhoc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.adhoc-status {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
 .ssl-add-row {
   display: flex;
   gap: 0.5rem;

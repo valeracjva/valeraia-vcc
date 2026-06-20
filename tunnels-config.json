@@ -1,40 +1,40 @@
 {
   "tunnels": [
     {
-      "port":    3307,
-      "name":    "FatApp MariaDB",
-      "desc":    "MySQL contenedor n8n (172.19.0.6:3306) via srv-faty001",
-      "remote":  "fatapp@172.16.100.150",
-      "key":     ".ssh/id_fatapp",
+      "port": 3307,
+      "name": "FatApp MariaDB",
+      "desc": "MySQL contenedor n8n (172.19.0.6:3306) via srv-faty001",
+      "remote": "fatapp@172.16.100.150",
+      "key": ".ssh/id_fatapp",
       "forward": "172.19.0.6:3306",
-      "prod":    false
+      "prod": false
     },
     {
-      "port":    3308,
-      "name":    "appstest MySQL",
-      "desc":    "MySQL srv-appstest (10.145.2.26:3306)",
-      "remote":  "ubuntu@10.145.2.26",
-      "key":     ".ssh/srv-appstest.key",
+      "port": 3308,
+      "name": "appstest MySQL",
+      "desc": "MySQL srv-appstest (10.145.2.26:3306)",
+      "remote": "ubuntu@10.145.2.26",
+      "key": ".ssh/digna/srv-appstest.key",
       "forward": "127.0.0.1:3306",
-      "prod":    false
+      "prod": false
     },
     {
-      "port":    3309,
-      "name":    "appsprod MySQL",
-      "desc":    "MySQL srv-appsprod (10.145.2.214:3306) — PRODUCCIÓN",
-      "remote":  "ubuntu@10.145.2.214",
-      "key":     ".ssh/srv-appsprod.key",
+      "port": 3309,
+      "name": "appsprod MySQL",
+      "desc": "MySQL srv-appsprod (10.145.2.214:3306) — PRODUCCIÓN",
+      "remote": "ubuntu@10.145.2.214",
+      "key": ".ssh/digna/srv-appsprod.key",
       "forward": "127.0.0.1:3306",
-      "prod":    true
+      "prod": true
     },
     {
-      "port":    3310,
-      "name":    "appsdesa MySQL",
-      "desc":    "MySQL srv-appsdesa (10.145.2.165:3306)",
-      "remote":  "ubuntu@10.145.2.165",
-      "key":     ".ssh/srv-appsdesa.key",
+      "port": 3310,
+      "name": "appsdesa MySQL",
+      "desc": "MySQL srv-appsdesa (10.145.2.165:3306)",
+      "remote": "ubuntu@10.145.2.165",
+      "key": ".ssh/digna/srv-appsdesa.key",
       "forward": "127.0.0.1:3306",
-      "prod":    false
+      "prod": false
     }
   ]
 }
