@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import tls from 'tls';
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { PATHS } from '../config.js';
 
 const router = Router();
@@ -62,6 +62,40 @@ async function runChecks() {
 
   return { domains: results, summary, checkedAt: new Date().toISOString() };
 }
+
+// === Config CRUD ===
+
+router.get('/config', async (req, res, next) => {
+  try {
+    const raw = await readFile(PATHS.sslWatch, 'utf8');
+    res.json(JSON.parse(raw));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/config', async (req, res, next) => {
+  try {
+    const { domains } = req.body;
+    if (!Array.isArray(domains)) return res.status(400).json({ error: 'domains debe ser un array' });
+    for (const d of domains) {
+      if (typeof d.domain !== 'string' || !d.domain.trim()) {
+        return res.status(400).json({ error: 'cada entrada requiere domain (string no vacío)' });
+      }
+      if (typeof d.label !== 'string') {
+        return res.status(400).json({ error: 'cada entrada requiere label (string)' });
+      }
+    }
+    const clean = domains.map(d => ({ domain: d.domain.trim(), label: d.label.trim() }));
+    await writeFile(PATHS.sslWatch, JSON.stringify({ domains: clean }, null, 2), 'utf8');
+    cache = null; // invalidar caché
+    res.json({ domains: clean });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// === Monitor ===
 
 router.get('/', async (req, res, next) => {
   try {

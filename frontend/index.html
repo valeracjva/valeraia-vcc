@@ -111,9 +111,13 @@
       <div class="tab-panel hidden" id="tab-ssl">
         <div class="ssl-toolbar">
           <span class="ssl-checked-at" id="ssl-checked-at">—</span>
-          <button class="btn-ssl-refresh" id="btn-ssl-refresh">↻ Verificar ahora</button>
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn-ssl-refresh" id="btn-ssl-refresh">↻ Verificar ahora</button>
+            <button class="btn-ssl-manage" id="btn-ssl-manage">⚙ Gestionar</button>
+          </div>
         </div>
         <div id="ssl-container"></div>
+        <div id="ssl-manage-container" class="hidden"></div>
       </div>
     </main>
   </div>

@@ -577,8 +577,148 @@ async function loadSSL(force = false) {
   }
 }
 
+// === M10 — ABM Dominios ===
+let sslManageMode = false;
+
+function renderManageTable(domains) {
+  const c = document.getElementById('ssl-manage-container');
+  c.innerHTML = '';
+
+  // Formulario agregar
+  const addRow = document.createElement('div');
+  addRow.className = 'ssl-add-row';
+  addRow.innerHTML =
+    `<input class="ssl-input" id="ssl-new-domain" placeholder="dominio.com.ar" />` +
+    `<input class="ssl-input" id="ssl-new-label"  placeholder="Etiqueta" />` +
+    `<button class="btn-ssl-action add" id="btn-ssl-add">+ Agregar</button>`;
+  c.appendChild(addRow);
+
+  document.getElementById('btn-ssl-add').addEventListener('click', async () => {
+    const domain = document.getElementById('ssl-new-domain').value.trim();
+    const label  = document.getElementById('ssl-new-label').value.trim();
+    if (!domain) return;
+    await saveConfig([...domains, { domain, label: label || domain }]);
+  });
+
+  // Tabla editable
+  const table = document.createElement('table');
+  table.className = 'ssl-table';
+  table.innerHTML = `<thead><tr><th>DOMINIO</th><th>ETIQUETA</th><th></th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+
+  domains.forEach((entry, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+
+    const tdDomain = document.createElement('td');
+    const tdLabel  = document.createElement('td');
+    const tdActs   = document.createElement('td');
+    tdActs.style.whiteSpace = 'nowrap';
+
+    function viewMode() {
+      tdDomain.innerHTML = `<span class="ssl-domain">${escHtml(entry.domain)}</span>`;
+      tdLabel.innerHTML  = `<span class="ssl-label">${escHtml(entry.label)}</span>`;
+      tdActs.innerHTML   = '';
+
+      const btnEdit = document.createElement('button');
+      btnEdit.className = 'btn-ssl-action';
+      btnEdit.textContent = 'Editar';
+      btnEdit.addEventListener('click', editMode);
+
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn-ssl-action del';
+      btnDel.textContent = 'Eliminar';
+      btnDel.addEventListener('click', async () => {
+        const updated = domains.filter((_, i) => i !== idx);
+        await saveConfig(updated);
+      });
+
+      tdActs.appendChild(btnEdit);
+      tdActs.appendChild(btnDel);
+    }
+
+    function editMode() {
+      tdDomain.innerHTML = `<input class="ssl-input" value="${escHtml(entry.domain)}" id="edit-domain-${idx}" />`;
+      tdLabel.innerHTML  = `<input class="ssl-input" value="${escHtml(entry.label)}"  id="edit-label-${idx}"  />`;
+      tdActs.innerHTML   = '';
+
+      const btnSave = document.createElement('button');
+      btnSave.className = 'btn-ssl-action add';
+      btnSave.textContent = 'Guardar';
+      btnSave.addEventListener('click', async () => {
+        const newDomain = document.getElementById(`edit-domain-${idx}`).value.trim();
+        const newLabel  = document.getElementById(`edit-label-${idx}`).value.trim();
+        if (!newDomain) return;
+        const updated = domains.map((d, i) =>
+          i === idx ? { domain: newDomain, label: newLabel || newDomain } : d
+        );
+        await saveConfig(updated);
+      });
+
+      const btnCancel = document.createElement('button');
+      btnCancel.className = 'btn-ssl-action';
+      btnCancel.textContent = 'Cancelar';
+      btnCancel.addEventListener('click', viewMode);
+
+      tdActs.appendChild(btnSave);
+      tdActs.appendChild(btnCancel);
+    }
+
+    viewMode();
+    tr.appendChild(tdDomain);
+    tr.appendChild(tdLabel);
+    tr.appendChild(tdActs);
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  c.appendChild(table);
+}
+
+async function saveConfig(domains) {
+  try {
+    const res = await fetch(`${API_BASE}/api/ssl/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domains }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    const data = await res.json();
+    renderManageTable(data.domains);
+  } catch (e) {
+    alert(`Error al guardar: ${e.message}`);
+  }
+}
+
+async function loadManage() {
+  const c = document.getElementById('ssl-manage-container');
+  c.innerHTML = '<div class="ssl-loading">Cargando...</div>';
+  try {
+    const data = await get('/api/ssl/config');
+    renderManageTable(data.domains);
+  } catch {
+    c.innerHTML = '<div class="ssl-loading" style="color:var(--red)">Error al cargar configuración</div>';
+  }
+}
+
+function toggleManageMode() {
+  sslManageMode = !sslManageMode;
+  const monitor = document.getElementById('ssl-container');
+  const manage  = document.getElementById('ssl-manage-container');
+  const btnM    = document.getElementById('btn-ssl-manage');
+  const btnR    = document.getElementById('btn-ssl-refresh');
+
+  monitor.classList.toggle('hidden', sslManageMode);
+  manage.classList.toggle('hidden', !sslManageMode);
+  btnM.textContent = sslManageMode ? '← Monitor' : '⚙ Gestionar';
+  btnR.classList.toggle('hidden', sslManageMode);
+
+  if (sslManageMode) loadManage();
+}
+
 function initSSL() {
   document.getElementById('btn-ssl-refresh').addEventListener('click', () => loadSSL(true));
+  document.getElementById('btn-ssl-manage').addEventListener('click', toggleManageMode);
 }
 
 // === Init ===
