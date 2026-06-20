@@ -93,7 +93,7 @@ export const SCRIPTS = {
 export const TUNNEL_PORTS = [3307, 3308, 3309, 3310];
 ```
 
-El `cwd` para todos los scripts es `PATHS.workspaceRoot` (ya definido en config.js como la raíz de AI-Workspace).
+El `cwd` para todos los scripts es `WORKSPACE_ROOT` (ya exportado desde config.js como la raíz de AI-Workspace).
 
 ### routes/tunnels.js — GET /
 
