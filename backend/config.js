@@ -15,4 +15,14 @@ export const SERVER = {
   host: 'localhost',
 };
 
+export const SCRIPTS = {
+  'workspace-health': 'scripts/workspace/governance/workspace-health.ps1',
+  'compile-agents':   'scripts/workspace/governance/compile-agents-md.ps1',
+  'web-context':      'scripts/workspace/governance/generate-web-context.ps1',
+  'sync-status':      'scripts/workspace/sync/sync-status.ps1',
+  'cierre':           'scripts/workspace/governance/close-session.ps1',
+};
+
+export const TUNNEL_PORTS = [3307, 3308, 3309, 3310];
+
 export { WORKSPACE_ROOT };

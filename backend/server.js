@@ -1,42 +1,55 @@
 import express from 'express';
+import { createServer } from 'http';
 import { existsSync } from 'fs';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { WebSocketServer } from 'ws';
 import { SERVER, PATHS } from './config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-import handoverRouter from './routes/handover.js';
-import indexRouter   from './routes/index.js';
-import registryRouter from './routes/registry.js';
-import statusRouter  from './routes/status.js';
+import handoverRouter  from './routes/handover.js';
+import indexRouter     from './routes/index.js';
+import registryRouter  from './routes/registry.js';
+import statusRouter    from './routes/status.js';
+import tunnelsRouter   from './routes/tunnels.js';
+import projectsRouter  from './routes/projects.js';
+import governRouter from './routes/govern.js';
 
 const app = express();
 
-// CORS solo para localhost
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
     res.setHeader('Access-Control-Allow-Origin', origin ?? '*');
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-app.use('/api/handover', handoverRouter);
-app.use('/api/index',    indexRouter);
-app.use('/api/registry', registryRouter);
-app.use('/api/status',   statusRouter);
+app.use('/api/handover',  handoverRouter);
+app.use('/api/index',     indexRouter);
+app.use('/api/registry',  registryRouter);
+app.use('/api/status',    statusRouter);
+app.use('/api/tunnels',   tunnelsRouter);
+app.use('/api/projects',  projectsRouter);
 
-// Manejo global de errores — nunca crashea el proceso
+const httpServer = createServer(app);
+const wss = new WebSocketServer({ server: httpServer });
+wss.on('connection', () => {});   // govern.js usa wss.clients directamente
+
+app.use('/api/govern', governRouter(wss));
+
 app.use((err, req, res, _next) => {
   console.error('[ERROR]', err.message);
   res.status(500).json({ error: 'Error interno del servidor', detail: err.message });
 });
 
-app.listen(SERVER.port, SERVER.host, () => {
+httpServer.listen(SERVER.port, SERVER.host, () => {
   console.log(`\nVCC Backend iniciado en http://${SERVER.host}:${SERVER.port}\n`);
 
   const checks = [
