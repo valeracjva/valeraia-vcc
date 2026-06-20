@@ -182,7 +182,7 @@ function renderProjects(projects) {
       const projectsEl = activeCard.closest('.client-projects');
       if (projectsEl) {
         projectsEl.classList.remove('hidden');
-        const toggle = projectsEl.previousElementSibling?.querySelector('.toggle-arrow');
+        const toggle = projectsEl.closest('.client-group')?.querySelector('.toggle-arrow');
         if (toggle) toggle.textContent = '▼';
       }
     }
@@ -303,6 +303,79 @@ async function openVSCode(projectId, envName, btn) {
   }, 1500);
 }
 
+// === M12 — Briefing ===
+function escHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function parsePendientesDetail(sections) {
+  const raw = sections['Pendientes'] ?? '';
+  const items = { P1: [], P2: [], P3: [], P4: [] };
+  let current = null;
+  for (const line of raw.split('\n')) {
+    const pMatch = line.match(/^### (P[1-4])\b/);
+    if (pMatch) { current = pMatch[1]; continue; }
+    const open = line.match(/^- \[ \] (.+)/);
+    if (open && current) items[current].push(open[1].trim());
+  }
+  return items;
+}
+
+function renderBriefing(sections) {
+  const panel = document.getElementById('tab-briefing');
+  if (!panel) return;
+
+  const updated     = (sections['Metadata'] ?? '').match(/Actualizado:\s*(.+)/)?.[1]?.trim() ?? '—';
+  const nextStep    = (sections['Proximo paso seguro'] ?? '').trim();
+  const estado      = (sections['Estado actual'] ?? '').trim();
+  const bloq        = (sections['Bloqueadores'] ?? '').trim();
+  const resumen     = (sections['Resumen para IA entrante'] ?? '').trim();
+  const pendientes  = parsePendientesDetail(sections);
+  const hasBloq     = bloq.length > 0 && !/^ninguno$/i.test(bloq);
+
+  const pRows = ['P1','P2','P3','P4'].flatMap(p =>
+    pendientes[p].map(text =>
+      `<li class="brief-p-item brief-${p.toLowerCase()}">` +
+      `<span class="brief-p-tag">${p}</span>` +
+      `<span class="brief-p-text">${escHtml(text)}</span></li>`
+    )
+  ).join('');
+
+  panel.innerHTML =
+    `<p class="briefing-updated">↻ ${escHtml(updated)}</p>` +
+    `<div class="briefing-grid">` +
+
+    `<div class="briefing-card highlight briefing-full">` +
+    `<div class="briefing-card-label">▶ PRÓXIMO PASO</div>` +
+    `<div class="briefing-card-body">${escHtml(nextStep)}</div>` +
+    `</div>` +
+
+    `<div class="briefing-card">` +
+    `<div class="briefing-card-label">ESTADO ACTUAL</div>` +
+    `<div class="briefing-card-body">${escHtml(estado)}</div>` +
+    `</div>` +
+
+    `<div class="briefing-card${hasBloq ? ' warn' : ''}">` +
+    `<div class="briefing-card-label">${hasBloq ? '⚠ ' : ''}BLOQUEADORES</div>` +
+    `<div class="briefing-card-body${hasBloq ? '' : ' muted'}">${hasBloq ? escHtml(bloq) : 'ninguno'}</div>` +
+    `</div>` +
+
+    `<div class="briefing-card briefing-full">` +
+    `<div class="briefing-card-label">PENDIENTES ABIERTOS</div>` +
+    `<ul class="brief-p-list">${pRows || '<li class="brief-p-item"><span class="brief-p-text" style="color:var(--muted)">sin pendientes</span></li>'}</ul>` +
+    `</div>` +
+
+    `<div class="briefing-card briefing-full">` +
+    `<div class="briefing-card-label">RESUMEN PARA IA</div>` +
+    `<div class="briefing-card-body">${escHtml(resumen)}</div>` +
+    `</div>` +
+
+    `</div>`;
+}
+
 // === M3 — Gobernanza ===
 const GOVERN_SCRIPTS = [
   { id: 'workspace-health', name: 'workspace-health', desc: 'Diagnóstico completo' },
@@ -414,6 +487,7 @@ async function update() {
     renderPendientes(status.pendientes.handover);
     renderProject(project);
     updateTunnelDots(tunnels);
+    renderBriefing(handover.sections);
     showError(false);
   } catch (err) {
     console.error('[VCC] update error:', err.message);

@@ -32,10 +32,17 @@ export default function governRouter(wss) {
     res.status(202).json({ jobId });
 
     const scriptPath = path.join(WORKSPACE_ROOT, SCRIPTS[script]);
-    const child = spawn('pwsh', ['-NoProfile', '-File', scriptPath], {
-      cwd: WORKSPACE_ROOT,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    let child;
+    try {
+      child = spawn('pwsh', ['-NoProfile', '-File', scriptPath], {
+        cwd: WORKSPACE_ROOT,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (err) {
+      broadcast({ type: 'error', jobId, message: err.message });
+      activeJob = null;
+      return;
+    }
 
     const rl_out = createInterface({ input: child.stdout });
     const rl_err = createInterface({ input: child.stderr });

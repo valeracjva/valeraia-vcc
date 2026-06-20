@@ -444,3 +444,78 @@ body {
 
 .out-error   { color: var(--red); }
 .out-success { color: var(--green); }
+
+/* === M12 — Briefing === */
+.briefing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.briefing-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.briefing-card.highlight { border-color: rgba(0, 230, 118, 0.4); }
+.briefing-card.warn      { border-color: rgba(255, 171, 64, 0.4); }
+.briefing-full           { grid-column: 1 / -1; }
+
+.briefing-card-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.briefing-card-body {
+  font-size: 0.76rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.briefing-card.highlight .briefing-card-body { color: var(--green); }
+.briefing-card-body.muted                    { color: var(--muted); }
+
+.briefing-updated {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+/* Pendientes list */
+.brief-p-list { list-style: none; }
+
+.brief-p-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+
+.brief-p-item:last-child { border-bottom: none; }
+
+.brief-p-tag {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  min-width: 1.6rem;
+}
+
+.brief-p1 .brief-p-tag { color: var(--red); }
+.brief-p2 .brief-p-tag { color: var(--amber); }
+.brief-p3 .brief-p-tag { color: var(--text); }
+.brief-p4 .brief-p-tag { color: var(--muted); }
+
+.brief-p1 .brief-p-text { color: var(--text); }
+.brief-p2 .brief-p-text { color: var(--text); }
+.brief-p3 .brief-p-text { color: var(--muted); }
+.brief-p4 .brief-p-text { color: var(--muted); }
