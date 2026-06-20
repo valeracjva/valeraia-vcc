@@ -8,7 +8,24 @@ import { TUNNEL_PORTS, PATHS } from '../config.js';
 
 const router = Router();
 const homeDir = os.homedir();
+const sshDir  = path.resolve(homeDir, '.ssh');
 const adhocTunnels = new Map(); // port -> adhoc config (in-memory only)
+
+// ── validación ───────────────────────────────────────────────────────────────
+
+const RE_REMOTE  = /^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+$/;
+const RE_FORWARD = /^[A-Za-z0-9._-]+:\d{1,5}$/;
+
+function validateTunnelInput({ remote, key, forward }) {
+  if (!RE_REMOTE.test((remote || '').trim()))
+    return 'remote inválido — formato esperado: user@host';
+  if (!RE_FORWARD.test((forward || '').trim()))
+    return 'forward inválido — formato esperado: host:port';
+  const resolved = path.resolve(homeDir, (key || '').trim());
+  if (!resolved.startsWith(sshDir + path.sep))
+    return 'key debe estar bajo ~/.ssh y no puede contener ..';
+  return null;
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -41,7 +58,9 @@ function killPort(port) {
 }
 
 function spawnTunnel(port, remote, keyRelative, forward) {
-  const keyPath = path.join(homeDir, keyRelative);
+  const keyPath = path.resolve(homeDir, keyRelative);
+  if (!keyPath.startsWith(sshDir + path.sep))
+    throw new Error('key fuera de ~/.ssh');
   const [fwHost, fwPort] = forward.split(':');
   const child = spawn('ssh', [
     '-i', keyPath,
@@ -112,6 +131,8 @@ router.put('/config', async (req, res, next) => {
         if (typeof t[f] !== 'string' || !t[f].trim())
           return res.status(400).json({ error: `Campo requerido: ${f}` });
       }
+      const err = validateTunnelInput(t);
+      if (err) return res.status(400).json({ error: err });
     }
 
     const clean = tunnels.map(({ port, name, desc, remote, key, forward, prod }) => ({
@@ -139,6 +160,8 @@ router.post('/adhoc', async (req, res, next) => {
     if (typeof v !== 'string' || !v.trim())
       return res.status(400).json({ error: `Campo requerido: ${f}` });
   }
+  const valErr = validateTunnelInput({ remote, key, forward });
+  if (valErr) return res.status(400).json({ error: valErr });
 
   try {
     if (await checkPort(port)) return res.json({ status: 'already_open' });
