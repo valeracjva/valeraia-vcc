@@ -135,6 +135,7 @@ function initTabs() {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
       btn.classList.add('active');
       document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
+      if (btn.dataset.tab === 'tuneles') loadTunnels();
     });
   });
 }
@@ -722,34 +723,76 @@ function renderTunnels(tunnels) {
   }
 }
 
+function showTunnelError(msg) {
+  const c = document.getElementById('tunnels-container');
+  c.innerHTML =
+    `<div class="tunnel-error-state">` +
+    `<span style="color:var(--red)">${escHtml(msg)}</span>` +
+    `<button class="btn-ssl-refresh" id="btn-tunnel-retry">↻ Reintentar</button>` +
+    `</div>`;
+  document.getElementById('btn-tunnel-retry').addEventListener('click', loadTunnels);
+}
+
+function showTunnelBanner(msg, isError) {
+  // Banner temporal que no borra las cards
+  const existing = document.getElementById('tunnel-banner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'tunnel-banner';
+  banner.className = `tunnel-banner ${isError ? 'error' : 'info'}`;
+  banner.textContent = msg;
+  document.getElementById('tunnels-container').before(banner);
+  setTimeout(() => banner.remove(), 5000);
+}
+
 async function loadTunnels() {
   try {
     const data = await get('/api/tunnels/config');
+    // Limpiar banner de error si había uno
+    document.getElementById('tunnel-banner')?.remove();
     renderTunnels(data);
   } catch {
-    document.getElementById('tunnels-container').innerHTML =
-      '<div class="ssl-loading" style="color:var(--red)">Error al cargar túneles</div>';
+    showTunnelError('No se pudo cargar la lista de túneles');
   }
 }
 
 async function toggleTunnel(port, isActive) {
   tunnelsBusy[port] = true;
-  // actualizar UI inmediatamente para deshabilitar el botón
   const btn = document.querySelector(`.btn-tunnel[data-port="${port}"]`);
   if (btn) { btn.disabled = true; btn.textContent = isActive ? 'Cerrando...' : 'Abriendo...'; }
 
+  let opError = false;
   try {
     const action = isActive ? 'close' : 'open';
-    await fetch(`${API_BASE}/api/tunnels/${port}/${action}`, { method: 'POST' });
-  } catch { /* silencioso */ }
+    const res = await fetch(`${API_BASE}/api/tunnels/${port}/${action}`, { method: 'POST' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) opError = true;
+    else if (!isActive && body.status === 'timeout') opError = true;
+  } catch {
+    opError = true;
+  }
 
   delete tunnelsBusy[port];
-  await loadTunnels();
+
+  // Recargar la lista — si falla solo mostramos banner, no borramos las cards
+  try {
+    const data = await get('/api/tunnels/config');
+    document.getElementById('tunnel-banner')?.remove();
+    renderTunnels(data);
+    if (opError) {
+      const msg = isActive ? 'No se pudo cerrar el túnel' : 'No se pudo abrir el túnel — ¿VPN activa?';
+      showTunnelBanner(msg, true);
+    }
+  } catch {
+    showTunnelBanner('Error al actualizar estado de túneles', true);
+    // Rehabilitar el botón manualmente para que el usuario pueda reintentar
+    const b = document.querySelector(`.btn-tunnel[data-port="${port}"]`);
+    if (b) { b.disabled = false; b.textContent = isActive ? 'Cerrar' : 'Abrir'; }
+  }
 
   // Sincronizar sidebar dots
   try {
-    const tunnelStatus = await get('/api/tunnels');
-    updateTunnelDots(tunnelStatus);
+    updateTunnelDots(await get('/api/tunnels'));
   } catch { /* silencioso */ }
 }
 

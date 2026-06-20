@@ -788,6 +788,29 @@ body {
 .btn-tunnel.close                      { color: var(--green); border-color: rgba(0,230,118,0.3); }
 .btn-tunnel:disabled                   { opacity: 0.4; cursor: not-allowed; }
 
+.tunnel-error-state {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.tunnel-banner {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 3px;
+  margin-bottom: 0.5rem;
+  animation: fadeIn 0.2s ease;
+}
+.tunnel-banner.error { background: rgba(255,82,82,0.12); color: #ff6b6b; border: 1px solid rgba(255,82,82,0.25); }
+.tunnel-banner.info  { background: rgba(0,230,118,0.08); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
 .ssl-add-row {
   display: flex;
   gap: 0.5rem;
