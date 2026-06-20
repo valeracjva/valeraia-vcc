@@ -18,10 +18,18 @@ import governRouter from './routes/govern.js';
 
 const app = express();
 
+function isLocalOrigin(origin) {
+  if (!origin) return false;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch { return false; }
+}
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
-    res.setHeader('Access-Control-Allow-Origin', origin ?? '*');
+  if (isLocalOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -39,7 +47,16 @@ app.use('/api/tunnels',   tunnelsRouter);
 app.use('/api/projects',  projectsRouter);
 
 const httpServer = createServer(app);
-const wss = new WebSocketServer({ server: httpServer });
+const wss = new WebSocketServer({
+  server: httpServer,
+  verifyClient: ({ origin }) => {
+    if (!origin) return false;
+    try {
+      const { hostname } = new URL(origin);
+      return hostname === 'localhost' || hostname === '127.0.0.1';
+    } catch { return false; }
+  },
+});
 wss.on('connection', () => {});   // govern.js usa wss.clients directamente
 
 app.use('/api/govern', governRouter(wss));

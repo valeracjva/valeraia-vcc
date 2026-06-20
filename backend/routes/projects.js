@@ -26,6 +26,14 @@ router.post('/:id/environments/:env/open-vscode', async (req, res, next) => {
     return res.status(400).json({ error: 'host o remotePath no definido para este ambiente' });
   }
 
+  // Validar que host y remotePath no contengan metacaracteres de shell
+  if (!/^[A-Za-z0-9._-]+$/.test(host)) {
+    return res.status(400).json({ error: 'host contiene caracteres inválidos' });
+  }
+  if (/[;&|`$<>\\]/.test(remotePath)) {
+    return res.status(400).json({ error: 'remotePath contiene caracteres inválidos' });
+  }
+
   const child = spawn(
     'code',
     ['--remote', `ssh-remote+${host}`, remotePath],
