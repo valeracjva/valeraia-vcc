@@ -1697,7 +1697,8 @@ function applyMetrics(m) {
   }
 
   if (m.status !== 'ok') {
-    metricsEl.innerHTML = `<div class="metric-unreachable">— sin acceso</div>`;
+    const label = m.status === 'no-fingerprint' ? '— sin fingerprint' : '— sin acceso';
+    metricsEl.innerHTML = `<div class="metric-unreachable">${label}</div>`;
     return;
   }
 

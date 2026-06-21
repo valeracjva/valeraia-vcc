@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
+import { createHash, timingSafeEqual } from 'crypto';
 import { Client } from 'ssh2';
 import { SSH_SERVERS } from '../config.js';
 
@@ -54,24 +55,28 @@ function sshExec(conf, cmd) {
         algorithms: {
           serverHostKey: ['ssh-rsa', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'ssh-ed25519'],
         },
-        // Host key verification: strict si hay fingerprint, sin verificar (con warning) si no hay.
+        // Host key verification fail-closed.
+        // Sin fingerprint en SSH_SERVERS → rechaza la conexión (no falla abierto).
         // Para poblar: ssh-keyscan -t ed25519 <host> | ssh-keygen -lf - -E sha256
-        ...(conf.fingerprint
-          ? {
-              hostHash:     'sha256',
-              hostVerifier: (hash) => {
-                if (hash === conf.fingerprint) return true;
-                console.warn(`[metrics] WARN host key mismatch para ${conf.host} — esperado ${conf.fingerprint}, recibido ${hash}`);
-                return false;
-              },
-            }
-          : {
-              hostVerifier: () => {
-                console.warn(`[metrics] WARN sin fingerprint configurado para ${conf.host} — host key no verificada`);
-                return true;
-              },
-            }
-        ),
+        //   Copiar "SHA256:XXXXX..." en conf.fingerprint (incluyendo el prefijo "SHA256:").
+        hostHash: 'sha256',
+        hostVerifier: (hash) => {
+          if (!conf.fingerprint) {
+            console.warn(`[metrics] BLOCK ${conf.host} — sin fingerprint configurado en SSH_SERVERS`);
+            return false;
+          }
+          // Comparación en tiempo constante. ssh2 entrega hash como base64 cuando hostHash='sha256'.
+          // ssh-keygen -E sha256 produce "SHA256:<base64>"; extraemos solo la parte base64.
+          const expected = conf.fingerprint.replace(/^SHA256:/, '');
+          try {
+            const a = Buffer.from(hash,     'base64');
+            const b = Buffer.from(expected, 'base64');
+            if (a.length !== b.length) return false;
+            return timingSafeEqual(a, b);
+          } catch {
+            return false;
+          }
+        },
       });
     } catch (err) {
       done({ error: err.message });
@@ -99,6 +104,7 @@ function parse(out) {
 async function fetchOne(serverId) {
   const conf = SSH_SERVERS[serverId];
   if (!conf) return { serverId, status: 'no-config' };
+  if (!conf.fingerprint) return { serverId, status: 'no-fingerprint' };
 
   const { out, error } = await sshExec(conf, CMD);
   if (error) return { serverId, status: 'unreachable', error };
