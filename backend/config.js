@@ -1,6 +1,10 @@
 import path from 'path';
 
-const WORKSPACE_ROOT = 'C:\\Users\\Carlos Valera\\OneDrive\\Escritorio\\AI-Workspace';
+const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT
+  || 'C:\\Users\\Carlos Valera\\OneDrive\\Escritorio\\AI-Workspace';
+
+// Data files viven en AI-Workspace/workspace-ui/ (OneDrive), no en el repo de código
+const VCC_DATA = path.join(WORKSPACE_ROOT, 'workspace-ui');
 
 export const PATHS = {
   handover:       path.join(WORKSPACE_ROOT, 'runtime', 'HANDOVER.md'),
@@ -10,10 +14,10 @@ export const PATHS = {
   registry:       path.join(WORKSPACE_ROOT, 'global', 'projects-registry.json'),
   currentProject: path.join(WORKSPACE_ROOT, 'runtime', 'current-project.json'),
   recentProjects: path.join(WORKSPACE_ROOT, 'runtime', 'recent-projects.json'),
-  sslWatch:        path.join(WORKSPACE_ROOT, 'workspace-ui', 'ssl-watch.json'),
-  tunnelsConfig:   path.join(WORKSPACE_ROOT, 'workspace-ui', 'tunnels-config.json'),
+  sslWatch:        path.join(VCC_DATA, 'ssl-watch.json'),
+  tunnelsConfig:   path.join(VCC_DATA, 'tunnels-config.json'),
   serverInventory: path.join(WORKSPACE_ROOT, 'global', 'servers', 'SERVER_INVENTORY.md'),
-  serversConfig:   path.join(WORKSPACE_ROOT, 'workspace-ui', 'servers-config.json'),
+  serversConfig:   path.join(VCC_DATA, 'servers-config.json'),
 };
 
 export const SERVER = {
@@ -30,6 +34,5 @@ export const SCRIPTS = {
 };
 
 export const TUNNEL_PORTS = [3307, 3308, 3309, 3310];
-
 
 export { WORKSPACE_ROOT };
