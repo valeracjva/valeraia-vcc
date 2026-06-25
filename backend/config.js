@@ -1,10 +1,13 @@
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT
   || 'C:\\Users\\Carlos Valera\\OneDrive\\Escritorio\\AI-Workspace';
 
-// Data files viven en AI-Workspace/workspace-ui/ (OneDrive), no en el repo de código
-const VCC_DATA = path.join(WORKSPACE_ROOT, 'workspace-ui');
+// Data files colocados junto al código (D:\Workspace-Repos\workspace-ui\)
+const VCC_DATA = process.env.VCC_DATA || path.join(__dirname, '..');
 
 export const PATHS = {
   handover:       path.join(WORKSPACE_ROOT, 'runtime', 'HANDOVER.md'),
