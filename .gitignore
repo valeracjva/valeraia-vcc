@@ -1,3 +1,11 @@
 node_modules/
 *.log
 .env
+
+# Backups de frontend pre-migración
+*.before-f0-ui
+
+# Data files — viven en AI-Workspace/workspace-ui/ (OneDrive), no en el repo
+ssl-watch.json
+tunnels-config.json
+servers-config.json

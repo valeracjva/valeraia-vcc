@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import net from 'net';
 import { spawn } from 'child_process';
-import { readFile, writeFile } from 'fs/promises';
+import { readFile, writeFile, access } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { TUNNEL_PORTS, PATHS } from '../config.js';
@@ -9,6 +9,22 @@ import { TUNNEL_PORTS, PATHS } from '../config.js';
 const router = Router();
 const homeDir = os.homedir();
 const sshDir  = path.resolve(homeDir, '.ssh');
+
+// Detecta el binario ssh disponible al arrancar (evita depender del PATH del proceso Node)
+async function findSshBin() {
+  const candidates = [
+    'C:\\Windows\\System32\\OpenSSH\\ssh.exe',
+    'C:\\Program Files\\OpenSSH\\ssh.exe',
+    'C:\\Program Files\\Git\\usr\\bin\\ssh.exe',
+  ];
+  for (const c of candidates) {
+    try { await access(c); return c; } catch { /* sigue */ }
+  }
+  return 'ssh'; // fallback: confiar en que está en PATH
+}
+
+const SSH_BIN = await findSshBin();
+console.log(`[tunnels] ssh bin: ${SSH_BIN}`);
 const adhocTunnels = new Map(); // port -> adhoc config (in-memory only)
 
 // ── validación ───────────────────────────────────────────────────────────────
@@ -62,11 +78,12 @@ function spawnTunnel(port, remote, keyRelative, forward) {
   if (!keyPath.startsWith(sshDir + path.sep))
     throw new Error('key fuera de ~/.ssh');
   const [fwHost, fwPort] = forward.split(':');
-  const child = spawn('ssh', [
+  const child = spawn(SSH_BIN, [
     '-i', keyPath,
     '-L', `${port}:${fwHost}:${fwPort}`,
     remote, '-N',
     '-o', 'ExitOnForwardFailure=yes',
+    '-o', 'ConnectTimeout=10',
     '-o', 'ServerAliveInterval=30',
     '-o', 'ServerAliveCountMax=3',
     '-o', 'StrictHostKeyChecking=accept-new',
@@ -94,15 +111,44 @@ router.get('/', async (req, res) => {
 
 // ── GET /api/tunnels/config ───────────────────────────────────────────────────
 
+// Devuelve el JSON crudo del archivo (sin merge de estados activos)
+router.get('/config-raw', async (req, res, next) => {
+  try {
+    const raw = await readFile(PATHS.tunnelsConfig, 'utf8');
+    res.json(JSON.parse(raw));
+  } catch (err) { next(err); }
+});
+
+// Determina qué puertos tienen credenciales MySQL (MCP o config explícita)
+async function resolveDbEnabledPorts() {
+  const enabled = new Set();
+  try {
+    const mcpRaw = await readFile(path.join(homeDir, '.mcp.json'), 'utf8');
+    const mcp = JSON.parse(mcpRaw);
+    for (const server of Object.values(mcp.mcpServers ?? {})) {
+      const env = server.env ?? {};
+      if (env.MYSQL_PORT && env.MYSQL_USER && env.MYSQL_PASSWORD) {
+        enabled.add(parseInt(env.MYSQL_PORT, 10));
+      }
+    }
+  } catch { /* sin .mcp.json o parse error — ignorar */ }
+  return enabled;
+}
+
 router.get('/config', async (req, res, next) => {
   try {
-    const saved   = await loadConfig();
+    const [saved, dbPorts] = await Promise.all([loadConfig(), resolveDbEnabledPorts()]);
     const allPorts = [...saved.map(t => t.port), ...adhocTunnels.keys()];
     const statuses = Object.fromEntries(
       await Promise.all(allPorts.map(async p => [p, await checkPort(p)]))
     );
 
-    const savedList = saved.map(t => ({ ...t, active: !!statuses[t.port] }));
+    // dbEnabled: MCP existe para ese puerto OR credenciales explícitas en el config
+    const savedList = saved.map(t => ({
+      ...t,
+      active:    !!statuses[t.port],
+      dbEnabled: dbPorts.has(t.port) || !!(t.db?.user && t.db?.password),
+    }));
 
     const adhocList = [];
     for (const [port, cfg] of adhocTunnels) {

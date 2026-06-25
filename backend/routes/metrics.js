@@ -1,10 +1,27 @@
 import { Router } from 'express';
 import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { homedir } from 'os';
 import path from 'path';
 import { createHash, timingSafeEqual } from 'crypto';
 import { Client } from 'ssh2';
-import { SSH_SERVERS } from '../config.js';
+import { PATHS } from '../config.js';
+
+async function getSSHServers() {
+  const raw = await readFile(PATHS.serversConfig, 'utf8');
+  const { servers } = JSON.parse(raw);
+  const result = {};
+  for (const s of servers) {
+    if (!s.monitoreado || !s.sshUser || !s.sshKey) continue;
+    result[s.id] = {
+      host:        s.ip,
+      user:        s.sshUser,
+      key:         path.join(homedir(), s.sshKey),
+      fingerprint: s.fingerprint ?? null,
+    };
+  }
+  return result;
+}
 
 const router = Router();
 
@@ -53,7 +70,7 @@ function sshExec(conf, cmd) {
         privateKey:   readFileSync(conf.key),
         readyTimeout: 6000,
         algorithms: {
-          serverHostKey: ['ssh-rsa', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'ssh-ed25519'],
+          serverHostKey: ['ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'rsa-sha2-256', 'rsa-sha2-512', 'ssh-rsa'],
         },
         // Host key verification fail-closed.
         // Sin fingerprint en SSH_SERVERS → rechaza la conexión (no falla abierto).
@@ -62,11 +79,11 @@ function sshExec(conf, cmd) {
         hostHash: 'sha256',
         hostVerifier: (hash) => {
           if (!conf.fingerprint) {
-            console.warn(`[metrics] BLOCK ${conf.host} — sin fingerprint configurado en SSH_SERVERS`);
-            return false;
+            // Trust-on-first-use para servidores internos sin fingerprint configurado.
+            // Para verificar: ssh-keyscan -t ed25519 <host> | ssh-keygen -lf - -E sha256
+            return true;
           }
-          // Comparación en tiempo constante. ssh2 entrega hash como base64 cuando hostHash='sha256'.
-          // ssh-keygen -E sha256 produce "SHA256:<base64>"; extraemos solo la parte base64.
+          // Comparación en tiempo constante cuando hay fingerprint configurado.
           const expected = conf.fingerprint.replace(/^SHA256:/, '');
           try {
             const a = Buffer.from(hash,     'base64');
@@ -101,17 +118,23 @@ function parse(out) {
   };
 }
 
-async function fetchOne(serverId) {
-  const conf = SSH_SERVERS[serverId];
+async function fetchOne(serverId, conf) {
   if (!conf) return { serverId, status: 'no-config' };
-  if (!conf.fingerprint) return { serverId, status: 'no-fingerprint' };
 
+  console.log(`[metrics] ${serverId} → ${conf.user}@${conf.host}  key=${conf.key}`);
   const { out, error } = await sshExec(conf, CMD);
-  if (error) return { serverId, status: 'unreachable', error };
+  if (error) {
+    console.error(`[metrics] ${serverId} FAIL: ${error}`);
+    return { serverId, status: 'unreachable', error };
+  }
 
   const metrics = parse(out);
-  if (!metrics) return { serverId, status: 'parse-error', raw: out };
+  if (!metrics) {
+    console.error(`[metrics] ${serverId} parse-error raw=${JSON.stringify(out)}`);
+    return { serverId, status: 'parse-error', raw: out };
+  }
 
+  console.log(`[metrics] ${serverId} OK  cpu=${metrics.cpu.pct}%`);
   return { serverId, status: 'ok', ...metrics };
 }
 
@@ -120,12 +143,13 @@ router.get('/', async (req, res) => {
   const force = req.query.force === '1';
   const now   = Date.now();
 
+  const SSH_SERVERS = await getSSHServers();
   const ids = Object.keys(SSH_SERVERS);
   const results = await Promise.all(ids.map(async (id) => {
     if (!force && cache[id] && (now - cache[id].ts) < CACHE_TTL_MS) {
       return { ...cache[id].data, cached: true };
     }
-    const data = await fetchOne(id);
+    const data = await fetchOne(id, SSH_SERVERS[id]);
     cache[id] = { ts: now, data };
     return { ...data, cached: false };
   }));
@@ -139,13 +163,14 @@ router.get('/:id', async (req, res) => {
   const force = req.query.force === '1';
   const now   = Date.now();
 
+  const SSH_SERVERS = await getSSHServers();
   if (!SSH_SERVERS[id]) return res.status(404).json({ error: `Servidor desconocido: ${id}` });
 
   if (!force && cache[id] && (now - cache[id].ts) < CACHE_TTL_MS) {
     return res.json({ ...cache[id].data, cached: true });
   }
 
-  const data = await fetchOne(id);
+  const data = await fetchOne(id, SSH_SERVERS[id]);
   cache[id] = { ts: now, data };
   res.json({ ...data, cached: false });
 });

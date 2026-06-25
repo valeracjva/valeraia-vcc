@@ -65,8 +65,28 @@ Solo el código del VCC se mueve fuera.
 |---|---|
 | `GET /api/handover` | `runtime/HANDOVER.md` parseado en secciones |
 | `GET /api/index` | Pendientes de `knowledge/INDEX.md` con conteos |
-| `GET /api/registry` | `global/projects-registry.json` completo |
+| `GET /api/registry` | Registry completo + hash en `X-Registry-Hash` y `ETag` |
+| `POST /api/projects` | Alta de proyecto; ID autogenerado desde `name` |
+| `PATCH /api/projects/:id` | Edición granular de metadata; el ID es inmutable |
+| `DELETE /api/projects/:id` | Baja; bloqueada si runtime o HANDOVER lo referencian |
+| `POST /api/projects/:id/environments` | Alta de ambiente |
+| `PATCH /api/projects/:id/environments/:env` | Edición granular de ambiente |
+| `DELETE /api/projects/:id/environments/:env` | Baja de ambiente |
+| `POST /api/projects/:id/environments/:env/open-vscode` | Abre VS Code Remote SSH |
 | `GET /api/status` | Estado consolidado: frescura, host, pendientes (handover + index) |
+| `GET/PUT /api/ssl/config` | Configuración ABM de dominios SSL |
+| `GET /api/tunnels/config` | Presets y estado de túneles SSH |
+| `PUT /api/tunnels/config` | ABM de presets de túneles |
+
+### Escrituras del registry
+
+Todas las escrituras reciben `expectedHash`. Si difiere del contenido vigente, la API
+responde `409` y no sobrescribe. `registry-store.js` trabaja sobre una copia en memoria,
+valida estructura e IDs/ambientes únicos, escribe y parsea un temporal, crea backup y
+reemplaza el archivo con rollback ante error. Los campos no administrados se preservan.
+
+El alta no acepta un ID elegido por el cliente. El backend lo deriva de `name` como slug
+minúsculo sin acentos y resuelve colisiones agregando `-2`, `-3`, etc.
 
 ## Estructura
 
@@ -76,10 +96,17 @@ backend/
 ├── config.js          ← WORKSPACE_ROOT y PATHS centralizados
 ├── package.json
 ├── lib/
-│   └── md-parser.js   ← parseo de secciones .md (compartido)
+│   ├── md-parser.js       ← parseo de secciones .md (compartido)
+│   └── registry-store.js  ← lectura, validación y mutación transaccional del registry
+├── test/
+│   ├── registry-store.test.js
+│   └── projects-routes.test.js
 └── routes/
     ├── handover.js
     ├── index.js
+    ├── projects.js
     ├── registry.js
-    └── status.js
+    ├── ssl.js
+    ├── status.js
+    └── tunnels.js
 ```

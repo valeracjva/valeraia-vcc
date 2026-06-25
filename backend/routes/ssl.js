@@ -51,9 +51,9 @@ async function runChecks() {
   const list = JSON.parse(raw).domains;
 
   const results = await Promise.all(
-    list.map(async ({ domain, label }) => {
+    list.map(async ({ domain, label, empresa }) => {
       const check = await checkDomain(domain);
-      return { domain, label, ...check };
+      return { domain, label, empresa: empresa ?? '', ...check };
     })
   );
 
@@ -86,7 +86,7 @@ router.put('/config', async (req, res, next) => {
         return res.status(400).json({ error: 'cada entrada requiere label (string)' });
       }
     }
-    const clean = domains.map(d => ({ domain: d.domain.trim(), label: d.label.trim() }));
+    const clean = domains.map(d => ({ domain: d.domain.trim(), label: d.label.trim(), empresa: (d.empresa ?? '').trim() }));
     await writeFile(PATHS.sslWatch, JSON.stringify({ domains: clean }, null, 2), 'utf8');
     cache = null; // invalidar caché
     res.json({ domains: clean });

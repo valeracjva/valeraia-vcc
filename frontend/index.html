@@ -6,106 +6,165 @@
   <title>VCC — ValeraIA Command Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="particles"></canvas>
 
-  <header class="header">
-    <span class="logo">◆ VCC</span>
-    <span class="header-host" id="host">—</span>
-    <span id="ssl-header-badge" class="ssl-header-badge hidden"></span>
-    <span class="freshness-badge">
-      <span class="dot" id="freshness-dot"></span>
-      <span id="freshness-label">—</span>
-    </span>
+  <!-- ── TOPBAR ──────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="topbar-logo">VCC</span>
+      <span class="topbar-name">ValeraIA Command Center</span>
+    </div>
+    <div class="topbar-status">
+      <span id="host" class="topbar-host">—</span>
+      <span id="ssl-header-badge" class="ssl-header-badge hidden"></span>
+      <div class="topbar-freshness">
+        <span class="dot" id="freshness-dot"></span>
+        <span id="freshness-label" class="freshness-text">—</span>
+      </div>
+      <button id="btn-theme-toggle" class="btn-theme-toggle" title="Cambiar tema">☀ Claro</button>
+    </div>
   </header>
 
-  <div class="layout">
+  <!-- ── APP SHELL ───────────────────────────────────────────── -->
+  <div class="app-shell">
+
+    <!-- SIDEBAR -->
     <aside class="sidebar">
 
-      <div class="sidebar-section">
-        <div class="section-label">ESTADO HANDOVER</div>
-        <div class="freshness-row">
-          <span class="dot" id="sidebar-dot"></span>
-          <span id="sidebar-freshness">cargando...</span>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="section-label">PROYECTO ACTIVO</div>
-        <div id="project-name" class="project-name">—</div>
-        <div id="project-meta" class="project-meta">—</div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="section-label">PENDIENTES</div>
-        <div class="pendientes-grid">
-          <div class="pendiente" id="p1"><span class="p-label">P1</span><span class="p-count" id="p1-count">—</span></div>
-          <div class="pendiente" id="p2"><span class="p-label">P2</span><span class="p-count" id="p2-count">—</span></div>
-          <div class="pendiente" id="p3"><span class="p-label">P3</span><span class="p-count" id="p3-count">—</span></div>
-          <div class="pendiente" id="p4"><span class="p-label">P4</span><span class="p-count" id="p4-count">—</span></div>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="section-label">TÚNELES</div>
-        <div class="tunnel-list">
-          <div class="tunnel">
-            <span class="tunnel-dot" id="tunnel-dot-3307">○</span>
-            <span class="tunnel-port">3307</span>
-            <span class="tunnel-name">FatApp</span>
-          </div>
-          <div class="tunnel">
-            <span class="tunnel-dot" id="tunnel-dot-3308">○</span>
-            <span class="tunnel-port">3308</span>
-            <span class="tunnel-name">appstest</span>
-          </div>
-          <div class="tunnel">
-            <span class="tunnel-dot" id="tunnel-dot-3309">○</span>
-            <span class="tunnel-port">3309</span>
-            <span class="tunnel-name">appsprod</span>
-            <span class="badge-prod">PROD</span>
-          </div>
-          <div class="tunnel">
-            <span class="tunnel-dot" id="tunnel-dot-3310">○</span>
-            <span class="tunnel-port">3310</span>
-            <span class="tunnel-name">appsdesa</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="section-label">HOST</div>
-        <div id="host-value" class="host-value">—</div>
-      </div>
-
-      <div id="error-banner" class="error-banner hidden">⚠ sin conexión</div>
-
-    </aside>
-
-    <main class="main">
-      <nav class="tabs-nav">
-        <button class="tab-btn" data-tab="briefing">Briefing</button>
-        <button class="tab-btn active" data-tab="proyectos">Proyectos</button>
-        <button class="tab-btn" data-tab="gobernanza">Gobernanza</button>
-        <button class="tab-btn" data-tab="ssl">SSL</button>
-        <button class="tab-btn" data-tab="tuneles">Túneles</button>
-        <button class="tab-btn" data-tab="infra">Infra</button>
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">WORKSPACE</div>
+        <button class="tab-btn nav-item active" data-tab="inicio">
+          <span class="nav-icon">◈</span>
+          <span class="nav-label">Inicio</span>
+        </button>
+        <button class="tab-btn nav-item" data-tab="briefing">
+          <span class="nav-icon">◉</span>
+          <span class="nav-label">Sesión actual</span>
+        </button>
+        <button class="tab-btn nav-item" data-tab="proyectos">
+          <span class="nav-icon">⊞</span>
+          <span class="nav-label">Proyectos</span>
+        </button>
+        <button class="tab-btn nav-item" data-tab="gobernanza">
+          <span class="nav-icon">⚙</span>
+          <span class="nav-label">Gobernanza</span>
+        </button>
+        <div class="nav-divider"></div>
+        <div class="nav-group-label">INFRAESTRUCTURA</div>
+        <button class="tab-btn nav-item" data-tab="ssl">
+          <span class="nav-icon">⊡</span>
+          <span class="nav-label">SSL / Dominios</span>
+        </button>
+        <button class="tab-btn nav-item" data-tab="tuneles">
+          <span class="nav-icon">⇌</span>
+          <span class="nav-label">Túneles SSH</span>
+        </button>
+        <button class="tab-btn nav-item" data-tab="opsmap">
+          <span class="nav-icon">◎</span>
+          <span class="nav-label">Mapa Operativo</span>
+        </button>
+        <button class="tab-btn nav-item" data-tab="apis">
+          <span class="nav-icon">⌁</span>
+          <span class="nav-label">APIs VCC</span>
+        </button>
+        <button class="tab-btn nav-item" data-tab="infra">
+          <span class="nav-icon">◫</span>
+          <span class="nav-label">Inventario</span>
+        </button>
       </nav>
 
+      <div class="sidebar-status">
+
+        <div class="status-section">
+          <div class="status-label">HANDOVER</div>
+          <div class="freshness-row">
+            <span class="dot" id="sidebar-dot"></span>
+            <span id="sidebar-freshness" class="freshness-text">cargando...</span>
+          </div>
+        </div>
+
+        <div class="status-section">
+          <div class="status-label">PROYECTO ACTIVO</div>
+          <div id="project-name" class="project-name">—</div>
+          <div id="project-meta" class="project-meta">—</div>
+        </div>
+
+        <div class="status-section">
+          <div class="status-label">PENDIENTES</div>
+          <div class="pendientes-grid">
+            <div class="pendiente" id="p1"><span class="p-label">P1</span><span class="p-count" id="p1-count">—</span></div>
+            <div class="pendiente" id="p2"><span class="p-label">P2</span><span class="p-count" id="p2-count">—</span></div>
+            <div class="pendiente" id="p3"><span class="p-label">P3</span><span class="p-count" id="p3-count">—</span></div>
+            <div class="pendiente" id="p4"><span class="p-label">P4</span><span class="p-count" id="p4-count">—</span></div>
+          </div>
+        </div>
+
+        <div class="status-section">
+          <div class="status-label">TÚNELES</div>
+          <div class="tunnel-list">
+            <div class="tunnel">
+              <span class="tunnel-dot" id="tunnel-dot-3307">○</span>
+              <span class="tunnel-port">3307</span>
+              <span class="tunnel-name">FatApp</span>
+            </div>
+            <div class="tunnel">
+              <span class="tunnel-dot" id="tunnel-dot-3308">○</span>
+              <span class="tunnel-port">3308</span>
+              <span class="tunnel-name">appstest</span>
+            </div>
+            <div class="tunnel">
+              <span class="tunnel-dot" id="tunnel-dot-3309">○</span>
+              <span class="tunnel-port">3309</span>
+              <span class="tunnel-name">appsprod</span>
+              <span class="badge-prod">PROD</span>
+            </div>
+            <div class="tunnel">
+              <span class="tunnel-dot" id="tunnel-dot-3310">○</span>
+              <span class="tunnel-port">3310</span>
+              <span class="tunnel-name">appsdesa</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-section">
+          <div class="status-label">HOST</div>
+          <div id="host-value" class="host-value">—</div>
+        </div>
+
+        <div id="error-banner" class="error-banner hidden">⚠ sin conexión</div>
+
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="app-main">
+
+      <!-- Tab: Inicio / Cockpit -->
+      <div class="tab-panel" id="tab-inicio"></div>
+
+      <!-- Tab: Sesión actual -->
       <div class="tab-panel hidden" id="tab-briefing"></div>
 
-      <div class="tab-panel" id="tab-proyectos">
-        <div class="projects-toolbar">
-          <div class="projects-registry-state">
-            <span class="projects-registry-label">REGISTRY</span>
-            <span class="projects-hash" id="projects-hash">—</span>
+      <!-- Tab: Proyectos -->
+      <div class="tab-panel hidden" id="tab-proyectos">
+        <div class="projects-toolbar view-toolbar">
+          <div class="view-toolbar-start">
+            <div class="projects-registry-state">
+              <span class="projects-registry-label">REGISTRY</span>
+              <span class="projects-hash" id="projects-hash">—</span>
+            </div>
+            <div class="btn-group">
+              <button class="btn-tab btn-projects-group active" data-group="client">Por cliente</button>
+              <button class="btn-tab btn-projects-group" data-group="name">Por nombre</button>
+              <button class="btn-tab btn-projects-group" data-group="list">Listado</button>
+            </div>
           </div>
-          <div class="projects-toolbar-actions">
-            <button class="btn-project-add" id="btn-project-add">＋ Proyecto</button>
-            <button class="btn-project-manage" id="btn-project-manage">⚙ Gestionar</button>
+          <div class="view-toolbar-end">
+            <button class="btn btn-primary btn-project-add" id="btn-project-add">＋ Proyecto</button>
+            <button class="btn btn-project-manage" id="btn-project-manage">⚙ Gestionar</button>
           </div>
         </div>
         <div id="projects-banner" class="projects-banner hidden"></div>
@@ -113,49 +172,137 @@
         <div id="projects-manage-container" class="hidden"></div>
       </div>
 
+      <!-- Tab: Gobernanza -->
       <div class="tab-panel hidden" id="tab-gobernanza">
+        <div class="view-toolbar">
+          <div class="view-toolbar-start">
+            <span class="view-section-label">Scripts de gobernanza</span>
+          </div>
+          <div class="view-toolbar-end">
+            <button class="btn btn-ghost" id="btn-clear">✕ Limpiar output</button>
+          </div>
+        </div>
         <div class="govern-grid" id="govern-grid"></div>
         <div class="output-bar">
-          <span>OUTPUT</span>
-          <button class="btn-clear" id="btn-clear">Limpiar</button>
+          <span id="output-bar-label">OUTPUT</span>
         </div>
         <div class="output-panel" id="output-panel"></div>
       </div>
 
+      <!-- Tab: SSL / Dominios -->
       <div class="tab-panel hidden" id="tab-ssl">
-        <div class="ssl-toolbar">
-          <span class="ssl-checked-at" id="ssl-checked-at">—</span>
-          <div style="display:flex;gap:0.4rem;align-items:center">
-            <div class="ssl-view-toggle">
-              <button class="btn-ssl-view active" data-view="expiry">Por vencimiento</button>
-              <button class="btn-ssl-view" data-view="domain">Por dominio</button>
+        <div class="ssl-toolbar view-toolbar">
+          <div class="view-toolbar-start">
+            <span class="ssl-checked-at" id="ssl-checked-at">—</span>
+            <div class="btn-group ssl-view-toggle">
+              <button class="btn-tab btn-ssl-view active" data-view="expiry">Vencimiento</button>
+              <button class="btn-tab btn-ssl-view" data-view="empresa">Empresa</button>
+              <button class="btn-tab btn-ssl-view" data-view="domain">Dominio</button>
+              <button class="btn-tab btn-ssl-view" data-view="list">Listado</button>
             </div>
-            <button class="btn-ssl-refresh" id="btn-ssl-refresh">↻ Verificar</button>
-            <button class="btn-ssl-manage" id="btn-ssl-manage">⚙ Gestionar</button>
+          </div>
+          <div class="view-toolbar-end">
+            <button class="btn btn-success btn-ssl-refresh" id="btn-ssl-refresh">↻ Verificar</button>
+            <button class="btn btn-warning btn-ssl-manage" id="btn-ssl-manage">⚙ Gestionar</button>
           </div>
         </div>
         <div id="ssl-container"></div>
         <div id="ssl-manage-container" class="hidden"></div>
       </div>
 
+      <!-- Tab: Túneles SSH -->
       <div class="tab-panel hidden" id="tab-tuneles">
-        <div class="ssl-toolbar">
-          <span></span>
-          <div style="display:flex;gap:0.4rem">
-            <button class="btn-ssl-refresh" id="btn-tunnel-adhoc">＋ Ad-hoc</button>
-            <button class="btn-ssl-manage"  id="btn-tunnel-manage">⚙ Gestionar</button>
+        <div class="ssl-toolbar view-toolbar">
+          <div class="view-toolbar-start">
+            <span class="view-section-label" id="tunnels-count-label">—</span>
+          </div>
+          <div class="view-toolbar-end">
+            <button class="btn btn-primary btn-ssl-refresh" id="btn-tunnel-adhoc">＋ Ad-hoc</button>
+            <button class="btn btn-ghost"                   id="btn-tunnel-edit-config">✎ Editar config</button>
+            <button class="btn btn-warning btn-ssl-manage"  id="btn-tunnel-manage">⚙ Gestionar</button>
           </div>
         </div>
         <div id="tunnels-container"></div>
         <div id="tunnels-adhoc-container"  class="hidden"></div>
         <div id="tunnels-manage-container" class="hidden"></div>
       </div>
+
+      <!-- Tab: Mapa Operativo -->
+      <div class="tab-panel hidden" id="tab-opsmap">
+        <div class="view-toolbar opsmap-toolbar">
+          <div class="view-toolbar-start">
+            <span class="view-section-label">Mapa vivo del workspace</span>
+            <span class="opsmap-subtitle" id="opsmap-subtitle">proyectos · servidores · dominios · túneles</span>
+          </div>
+          <div class="view-toolbar-end">
+            <button class="btn btn-success" id="btn-opsmap-refresh">↻ Sincronizar</button>
+          </div>
+        </div>
+        <div id="opsmap-container"></div>
+      </div>
+
+      <!-- Tab: APIs VCC -->
+      <div class="tab-panel hidden" id="tab-apis">
+        <div class="view-toolbar apis-toolbar">
+          <div class="view-toolbar-start">
+            <span class="view-section-label">Catálogo de APIs VCC</span>
+            <span class="apis-subtitle" id="apis-subtitle">backend local · rutas internas</span>
+          </div>
+          <div class="view-toolbar-end">
+            <button class="btn btn-success" id="btn-apis-refresh">↻ Verificar</button>
+          </div>
+        </div>
+        <div id="apis-container"></div>
+      </div>
+
+      <!-- Tab: Inventario -->
+      <div class="tab-panel hidden" id="tab-infra">
+        <div class="ssl-toolbar view-toolbar">
+          <div class="view-toolbar-start">
+            <div class="btn-group infra-group-toggle">
+              <button class="btn-tab btn-infra-group active" data-group="empresa">Empresa</button>
+              <button class="btn-tab btn-infra-group" data-group="os">OS</button>
+              <button class="btn-tab btn-infra-group" data-group="none">Sin agrupar</button>
+              <button class="btn-tab btn-infra-group" data-group="list">Listado</button>
+            </div>
+          </div>
+          <div class="view-toolbar-end">
+            <span class="infra-counter" id="infra-counter"></span>
+            <button class="btn btn-infra-monitored active" id="btn-infra-monitored">● Monitoreados</button>
+            <button class="btn btn-success btn-ssl-refresh" id="btn-infra-metrics-refresh">↻ Métricas</button>
+            <button class="btn btn-ssl-refresh" id="btn-infra-show-hidden" style="display:none">↺ Mostrar ocultos</button>
+            <button class="btn btn-warning btn-ssl-manage"  id="btn-infra-manage">⚙ Gestionar</button>
+          </div>
+        </div>
+        <div id="infra-container"></div>
+        <div id="infra-manage-container" class="hidden"></div>
+      </div>
+
     </main>
   </div>
 
-      <div class="tab-panel hidden" id="tab-infra">
-        <div id="infra-container"></div>
+  <!-- Footer -->
+  <footer class="vcc-footer">
+    <div class="vcc-footer-left">
+      <span class="vcc-footer-brand">VCC</span>
+      <span class="vcc-footer-version" id="footer-freshness-badge">—</span>
+    </div>
+    <div class="vcc-footer-center">
+      <div class="vcc-footer-tunnels" id="footer-tunnels">
+        <div class="vcc-footer-tunnel"><span class="vcc-footer-tunnel-dot" id="ft-dot-3307"></span><span>3307</span></div>
+        <div class="vcc-footer-tunnel"><span class="vcc-footer-tunnel-dot" id="ft-dot-3308"></span><span>3308</span></div>
+        <div class="vcc-footer-tunnel"><span class="vcc-footer-tunnel-dot" id="ft-dot-3309"></span><span>3309</span></div>
+        <div class="vcc-footer-tunnel"><span class="vcc-footer-tunnel-dot" id="ft-dot-3310"></span><span>3310</span></div>
       </div>
+    </div>
+    <div class="vcc-footer-right">
+      <span class="vcc-footer-host" id="footer-host">—</span>
+      <span class="vcc-footer-sep"></span>
+      <span class="vcc-footer-project" id="footer-project">—</span>
+      <span class="vcc-footer-sep"></span>
+      <span class="vcc-footer-clock" id="footer-time">—</span>
+    </div>
+  </footer>
 
   <!-- Modal de confirmación reutilizable -->
   <div id="confirm-modal" class="modal-overlay hidden">
@@ -164,8 +311,8 @@
       <p   class="modal-body"    id="confirm-body"></p>
       <input class="modal-confirm-input hidden" id="confirm-input" autocomplete="off">
       <div class="modal-actions">
-        <button class="btn-modal-cancel" id="confirm-cancel">Cancelar</button>
-        <button class="btn-modal-ok"     id="confirm-ok">Confirmar</button>
+        <button class="btn btn-ghost btn-modal-cancel" id="confirm-cancel">Cancelar</button>
+        <button class="btn btn-primary btn-modal-ok"  id="confirm-ok">Confirmar</button>
       </div>
     </div>
   </div>
@@ -178,6 +325,24 @@
     <option value=".ssh/digna/srv-appsdesa.key">
     <option value=".ssh/fatapp/clavessh_aws.pem">
   </datalist>
+
+  <!-- ── JSON EDITOR MODAL (reutilizable) ──────────────────── -->
+  <div class="json-modal hidden" id="json-modal">
+    <div class="json-modal-box">
+      <div class="json-modal-header">
+        <span class="json-modal-title" id="json-modal-title">Editar JSON</span>
+        <button class="json-modal-close" id="json-modal-close">✕</button>
+      </div>
+      <textarea class="json-modal-textarea" id="json-modal-textarea" spellcheck="false"></textarea>
+      <div class="json-modal-footer">
+        <span class="json-modal-error hidden" id="json-modal-error"></span>
+        <div class="json-modal-actions">
+          <button class="btn btn-ghost" id="json-modal-cancel">Cancelar</button>
+          <button class="btn btn-primary" id="json-modal-save">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>

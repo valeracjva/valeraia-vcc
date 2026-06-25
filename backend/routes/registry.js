@@ -1,24 +1,34 @@
 import { Router } from 'express';
-import { readFile } from 'fs/promises';
-import { PATHS } from '../config.js';
 
-const router = Router();
+import { readRegistry } from '../lib/registry-store.js';
 
-router.get('/', async (req, res, next) => {
-  try {
-    const raw = await readFile(PATHS.registry, 'utf8');
-    try {
-      const parsed = JSON.parse(raw);
-      res.json(parsed);
-    } catch {
-      return res.status(500).json({ error: 'El archivo de registry no es JSON válido', path: PATHS.registry });
-    }
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      return res.status(404).json({ error: 'projects-registry.json no encontrado', path: PATHS.registry });
-    }
-    next(err);
+const defaultStore = { readRegistry };
+
+function sendError(res, error) {
+  if (error?.code === 'ENOENT') {
+    return res.status(404).json({ error: 'projects-registry.json no encontrado' });
   }
-});
+  const status = [400, 404, 409].includes(error?.statusCode) ? error.statusCode : 500;
+  return res.status(status).json({
+    error: status === 500 ? 'Error interno del servidor' : error.message,
+  });
+}
 
-export default router;
+export function createRegistryRouter({ store = defaultStore } = {}) {
+  const router = Router();
+
+  router.get('/', async (_req, res) => {
+    try {
+      const { registry, hash } = await store.readRegistry();
+      res.setHeader('ETag', `"${hash}"`);
+      res.setHeader('X-Registry-Hash', hash);
+      res.json(registry);
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  return router;
+}
+
+export default createRegistryRouter();
