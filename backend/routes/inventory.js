@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { readFile, writeFile } from 'fs/promises';
 import { PATHS } from '../config.js';
+import path from 'path';
+import os from 'os';
 
 const router = Router();
 
@@ -115,6 +117,48 @@ router.put('/:id', async (req, res, next) => {
     servers[idx] = clean(incoming);
     await save(servers);
     res.json({ server: servers[idx] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/inventory/:id/mcp-ssh — agrega el servidor al SERVERS de mcp-ssh/index.js
+router.post('/:id/mcp-ssh', async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const servers = await load();
+    const srv = servers.find(s => s.id === id);
+    if (!srv) return res.status(404).json({ error: `Servidor no encontrado: ${id}` });
+    if (!srv.sshUser || !srv.sshKey)
+      return res.status(400).json({ error: 'El servidor necesita sshUser y sshKey para agregar al mcp-ssh' });
+
+    const mcpSshPath = path.join(os.homedir(), '.claude', 'mcp', 'mcp-ssh', 'index.js');
+    let content = await readFile(mcpSshPath, 'utf8');
+
+    if (content.includes(`'${id}':`))
+      return res.status(409).json({ error: `El alias "${id}" ya existe en mcp-ssh` });
+
+    // Normalizar sshKey: quitar ~/ o ./ y partir en segmentos para path.join(HOME, ...)
+    const keyNorm = srv.sshKey.replace(/^~\//, '').replace(/^\.\//, '');
+    const keyParts = keyNorm.split('/').map(p => `'${p}'`).join(', ');
+
+    const newEntry =
+      `  '${id}': {\n` +
+      `    host: '${srv.ip}',\n` +
+      `    port: 22,\n` +
+      `    username: '${srv.sshUser}',\n` +
+      `    privateKey: fs.readFileSync(path.join(HOME, ${keyParts}))\n` +
+      `  }`;
+
+    const ANCHOR = '\n};\n\nfunction connect(';
+    const anchorIdx = content.indexOf(ANCHOR);
+    if (anchorIdx === -1)
+      return res.status(500).json({ error: 'No se encontró el anchor en mcp-ssh/index.js' });
+
+    content = content.slice(0, anchorIdx) + ',\n' + newEntry + content.slice(anchorIdx);
+    await writeFile(mcpSshPath, content, 'utf8');
+
+    res.json({ ok: true, added: id });
   } catch (err) {
     next(err);
   }

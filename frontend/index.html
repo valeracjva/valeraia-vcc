@@ -74,6 +74,10 @@
           <span class="nav-icon">◫</span>
           <span class="nav-label">Inventario</span>
         </button>
+        <button class="tab-btn nav-item" data-tab="mcp">
+          <span class="nav-icon">⊕</span>
+          <span class="nav-label">MCPs</span>
+        </button>
       </nav>
 
       <div class="sidebar-status">
@@ -256,6 +260,27 @@
       </div>
 
       <!-- Tab: Inventario -->
+      <div class="tab-panel hidden" id="tab-mcp">
+        <div class="ssl-toolbar view-toolbar">
+          <div class="view-toolbar-start">
+            <div class="btn-group infra-group-toggle">
+              <button class="btn-tab btn-mcp-group active" data-group="tipo">Tipo</button>
+              <button class="btn-tab btn-mcp-group" data-group="estado">Estado</button>
+              <button class="btn-tab btn-mcp-group" data-group="none">Sin agrupar</button>
+              <button class="btn-tab btn-mcp-group" data-group="list">Listado</button>
+            </div>
+          </div>
+          <div class="view-toolbar-end">
+            <span class="infra-counter" id="mcp-counter"></span>
+            <button class="btn btn-ssl-refresh" id="btn-mcp-refresh">↻ Recargar</button>
+            <button class="btn btn-ssl-refresh" id="btn-mcp-show-hidden" style="display:none">↺ Mostrar ocultos</button>
+            <button class="btn btn-warning btn-ssl-manage" id="btn-mcp-manage">⚙ Gestionar</button>
+          </div>
+        </div>
+        <div id="mcp-container"></div>
+        <div id="mcp-manage-container" class="hidden"></div>
+      </div>
+
       <div class="tab-panel hidden" id="tab-infra">
         <div class="ssl-toolbar view-toolbar">
           <div class="view-toolbar-start">
