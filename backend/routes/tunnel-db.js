@@ -102,6 +102,9 @@ router.get('/:port', async (req, res, next) => {
     if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
       return res.status(503).json({ error: 'Túnel no activo o sin respuesta' });
     }
+    if (err.code === 'ER_ACCESS_DENIED_ERROR') {
+      return res.status(503).json({ error: 'Credenciales MySQL inválidas — revisar MCP o tunnels-config' });
+    }
     next(err);
   } finally {
     try { conn?.end(); } catch { /* ignore */ }

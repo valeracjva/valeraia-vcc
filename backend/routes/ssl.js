@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import tls from 'tls';
+import dns from 'dns';
 import { readFile, writeFile } from 'fs/promises';
 import { PATHS } from '../config.js';
 
 const router = Router();
+const dnsPromises = dns.promises;
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutos
 let cache = null;
@@ -11,8 +13,24 @@ let cache = null;
 function classifyDays(daysLeft) {
   if (daysLeft <= 0)  return 'expired';
   if (daysLeft <= 14) return 'crit';
-  if (daysLeft <= 30) return 'warn';
+  if (daysLeft <= 35) return 'warn'; // Let's Encrypt renueva ~30d antes — margen para notar renovaciones fallidas
   return 'ok';
+}
+
+// Equivalente a `dig +short domain` / `nslookup domain` — resuelve el A record
+// y los nameservers reales. Corre para todos los dominios, incluso archivados,
+// porque es liviano y sirve como señal si algo vuelve a resolver.
+//
+// dns.lookup() usa el resolver del SO (igual que tls.connect internamente) — funciona
+// detrás de VPN/firewall. dns.resolve4()/resolveNs() consultan nameservers directo por
+// UDP:53 y dan ECONNREFUSED en redes que solo permiten el stub resolver del SO — por eso
+// van separados: IP por lookup (confiable), NS records por resolve (best-effort, puede fallar).
+async function resolveDnsInfo(domain) {
+  const [ip, ns] = await Promise.all([
+    dnsPromises.lookup(domain, { family: 4 }).then(r => r.address).catch(() => null),
+    dnsPromises.resolveNs(domain).catch(() => []),
+  ]);
+  return { resolvedIp: ip, nsRecords: ns };
 }
 
 function checkDomain(domain) {
@@ -51,14 +69,24 @@ async function runChecks() {
   const list = JSON.parse(raw).domains;
 
   const results = await Promise.all(
-    list.map(async ({ domain, label, empresa }) => {
+    list.map(async ({ domain, label, empresa, dnsAdmin, archived, archivedNote }) => {
+      const dnsInfo = await resolveDnsInfo(domain);
+
+      // Archivado = decisión tomada (ej: dominio dado de baja en nic.ar y no se renueva).
+      // No tiene sentido pegarle al puerto 443 por algo que ya sabemos que no responde,
+      // pero el DNS sí se resuelve siempre — es la señal barata de si algo cambió.
+      if (archived) {
+        return { domain, label, empresa: empresa ?? '', dnsAdmin: dnsAdmin ?? '', ...dnsInfo,
+                  archived: true, archivedNote: archivedNote ?? '',
+                  status: 'archived', daysLeft: null, expiresAt: null, error: null };
+      }
       const check = await checkDomain(domain);
-      return { domain, label, empresa: empresa ?? '', ...check };
+      return { domain, label, empresa: empresa ?? '', dnsAdmin: dnsAdmin ?? '', ...dnsInfo, archived: false, ...check };
     })
   );
 
   const summary = { ok: 0, warn: 0, crit: 0, expired: 0, error: 0 };
-  for (const r of results) summary[r.status]++;
+  for (const r of results) if (!r.archived) summary[r.status]++;
 
   return { domains: results, summary, checkedAt: new Date().toISOString() };
 }
@@ -86,7 +114,13 @@ router.put('/config', async (req, res, next) => {
         return res.status(400).json({ error: 'cada entrada requiere label (string)' });
       }
     }
-    const clean = domains.map(d => ({ domain: d.domain.trim(), label: d.label.trim(), empresa: (d.empresa ?? '').trim() }));
+    const clean = domains.map(d => ({
+      domain: d.domain.trim(),
+      label: d.label.trim(),
+      empresa: (d.empresa ?? '').trim(),
+      dnsAdmin: (d.dnsAdmin ?? '').trim(),
+      ...(d.archived ? { archived: true, archivedNote: (d.archivedNote ?? '').trim() } : {}),
+    }));
     await writeFile(PATHS.sslWatch, JSON.stringify({ domains: clean }, null, 2), 'utf8');
     cache = null; // invalidar caché
     res.json({ domains: clean });

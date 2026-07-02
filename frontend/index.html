@@ -32,49 +32,58 @@
   <div class="app-shell">
 
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
+
+      <div class="sidebar-toolbar">
+        <button id="btn-sidebar-pin" class="sidebar-pin-btn" title="Fijar panel expandido">
+          <span class="pin-dot"></span><span class="sidebar-pin-label">Fijar</span>
+        </button>
+        <button id="btn-sidebar-collapse" class="sidebar-collapse-btn" title="Colapsar panel">
+          <span class="collapse-arrow">◂</span>
+        </button>
+      </div>
 
       <nav class="sidebar-nav">
         <div class="nav-group-label">WORKSPACE</div>
-        <button class="tab-btn nav-item active" data-tab="inicio">
+        <button class="tab-btn nav-item active" data-tab="inicio" title="Inicio">
           <span class="nav-icon">◈</span>
           <span class="nav-label">Inicio</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="briefing">
+        <button class="tab-btn nav-item" data-tab="briefing" title="Sesión actual">
           <span class="nav-icon">◉</span>
           <span class="nav-label">Sesión actual</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="proyectos">
+        <button class="tab-btn nav-item" data-tab="proyectos" title="Proyectos">
           <span class="nav-icon">⊞</span>
           <span class="nav-label">Proyectos</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="gobernanza">
+        <button class="tab-btn nav-item" data-tab="gobernanza" title="Gobernanza">
           <span class="nav-icon">⚙</span>
           <span class="nav-label">Gobernanza</span>
         </button>
         <div class="nav-divider"></div>
         <div class="nav-group-label">INFRAESTRUCTURA</div>
-        <button class="tab-btn nav-item" data-tab="ssl">
+        <button class="tab-btn nav-item" data-tab="ssl" title="SSL / Dominios">
           <span class="nav-icon">⊡</span>
           <span class="nav-label">SSL / Dominios</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="tuneles">
+        <button class="tab-btn nav-item" data-tab="tuneles" title="Túneles SSH">
           <span class="nav-icon">⇌</span>
           <span class="nav-label">Túneles SSH</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="opsmap">
+        <button class="tab-btn nav-item" data-tab="opsmap" title="Mapa Operativo">
           <span class="nav-icon">◎</span>
           <span class="nav-label">Mapa Operativo</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="apis">
+        <button class="tab-btn nav-item" data-tab="apis" title="APIs VCC">
           <span class="nav-icon">⌁</span>
           <span class="nav-label">APIs VCC</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="infra">
+        <button class="tab-btn nav-item" data-tab="infra" title="Inventario">
           <span class="nav-icon">◫</span>
           <span class="nav-label">Inventario</span>
         </button>
-        <button class="tab-btn nav-item" data-tab="mcp">
+        <button class="tab-btn nav-item" data-tab="mcp" title="MCPs">
           <span class="nav-icon">⊕</span>
           <span class="nav-label">MCPs</span>
         </button>
@@ -207,6 +216,7 @@
           </div>
           <div class="view-toolbar-end">
             <button class="btn btn-success btn-ssl-refresh" id="btn-ssl-refresh">↻ Verificar</button>
+            <button class="btn btn-ssl-refresh" id="btn-ssl-show-hidden" style="display:none">↺ Mostrar ocultos</button>
             <button class="btn btn-warning btn-ssl-manage" id="btn-ssl-manage">⚙ Gestionar</button>
           </div>
         </div>

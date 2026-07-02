@@ -2,7 +2,7 @@
 // Todas las vistas usan este helper para garantizar look&feel idéntico.
 // storageKey: si se provee, el estado colapsado se persiste en localStorage.
 // badge: texto adicional que aparece como tag al final del header (ej. riesgo).
-function buildAccordion(label, count, bodyEl, { badge = null, startOpen = false, storageKey = null } = {}) {
+function buildAccordion(label, count, bodyEl, { badge = null, startOpen = false, storageKey = null, title = null } = {}) {
   const wrapper = document.createElement('div');
   wrapper.className = 'vcc-accordion';
 
@@ -12,6 +12,7 @@ function buildAccordion(label, count, bodyEl, { badge = null, startOpen = false,
 
   const header = document.createElement('div');
   header.className = 'section-header';
+  if (title) header.title = title;
 
   const arrow = document.createElement('span');
   arrow.className = 'section-header-arrow';
@@ -166,6 +167,58 @@ function updateTunnelDots(tunnels) {
     dot.classList.toggle('active',   active);
     dot.classList.toggle('inactive', !active);
   }
+}
+
+// === Sidebar: colapso + pin + hover-peek ===
+const SIDEBAR_STATE_KEY = 'vcc-sidebar-state';
+
+function initSidebar() {
+  const sidebar   = document.getElementById('sidebar');
+  const pinBtn    = document.getElementById('btn-sidebar-pin');
+  const collapseBtn = document.getElementById('btn-sidebar-collapse');
+  if (!sidebar || !pinBtn || !collapseBtn) return;
+
+  let state;
+  try { state = JSON.parse(localStorage.getItem(SIDEBAR_STATE_KEY)) ?? {}; }
+  catch { state = {}; }
+  let collapsed = state.collapsed ?? false;
+  let pinned    = state.pinned ?? true;
+
+  const persist = () => localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify({ collapsed, pinned }));
+
+  const render = () => {
+    sidebar.classList.toggle('collapsed', collapsed);
+    sidebar.classList.toggle('pinned', pinned);
+    pinBtn.classList.toggle('pinned', pinned);
+    collapseBtn.title = collapsed ? 'Expandir panel' : 'Colapsar panel';
+    pinBtn.title = pinned ? 'Desfijar panel' : 'Fijar panel expandido';
+  };
+  render();
+
+  collapseBtn.addEventListener('click', () => {
+    collapsed = !collapsed;
+    if (collapsed) { pinned = false; sidebar.classList.remove('peek'); }
+    persist();
+    render();
+  });
+
+  pinBtn.addEventListener('click', () => {
+    pinned = !pinned;
+    if (pinned) { collapsed = false; sidebar.classList.remove('peek'); }
+    persist();
+    render();
+  });
+
+  let leaveTimer = null;
+  sidebar.addEventListener('mouseenter', () => {
+    if (!collapsed || pinned) return;
+    clearTimeout(leaveTimer);
+    sidebar.classList.add('peek');
+  });
+  sidebar.addEventListener('mouseleave', () => {
+    if (!collapsed || pinned) return;
+    leaveTimer = setTimeout(() => sidebar.classList.remove('peek'), 150);
+  });
 }
 
 // === Tabs ===
@@ -2165,11 +2218,22 @@ function initMcp() {
 }
 
 // === M10 — SSL ===
-const SSL_STATUS_LABEL = { ok: 'OK', warn: 'WARN', crit: 'CRÍTICO', expired: 'VENCIDO', error: 'ERROR' };
-const SSL_STATUS_ORDER = { expired: 0, crit: 1, warn: 2, ok: 3, error: 4 };
+const SSL_STATUS_LABEL = { ok: 'OK', warn: 'WARN', crit: 'CRÍTICO', expired: 'VENCIDO', error: 'SIN RESOLVER', archived: 'ARCHIVADO' };
+// error va antes que warn/ok: no saber si un cert vive es al menos tan urgente como saber que agoniza.
+// archived va al final de todo: es un problema con decisión tomada, no una alerta activa.
+const SSL_STATUS_ORDER = { expired: 0, crit: 1, error: 2, warn: 3, ok: 4, archived: 5 };
 
 let sslView = 'expiry';
 let sslData  = null;
+
+const HIDDEN_SSL_KEY = 'vcc-hidden-ssl';
+function getSslHidden() {
+  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_SSL_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function saveSslHidden(set) {
+  localStorage.setItem(HIDDEN_SSL_KEY, JSON.stringify([...set]));
+}
 
 function updateSSLBadge(summary) {
   const badge = document.getElementById('ssl-header-badge');
@@ -2187,11 +2251,21 @@ function updateSSLBadge(summary) {
 }
 
 function sslDaysText(row) {
+  if (row.archived) return '—';
   if (row.daysLeft === null) return '—';
   return row.daysLeft <= 0 ? `${Math.abs(row.daysLeft)}d vencido` : `${row.daysLeft}d`;
 }
 
+// Versión larga para las cards (hay espacio) — la compacta ("31d") queda para Listado.
+function sslDaysTextLong(row) {
+  if (row.archived) return '—';
+  if (row.daysLeft === null) return '—';
+  if (row.daysLeft <= 0) return `Vencido hace ${Math.abs(row.daysLeft)} día${Math.abs(row.daysLeft) === 1 ? '' : 's'}`;
+  return `${row.daysLeft} día${row.daysLeft === 1 ? '' : 's'}`;
+}
+
 function sslExpiresText(row) {
+  if (row.archived) return row.archivedNote || 'Archivado';
   if (row.expiresAt) return new Date(row.expiresAt).toLocaleDateString('es-AR');
   return row.error ?? '—';
 }
@@ -2199,14 +2273,44 @@ function sslExpiresText(row) {
 function buildSSLCard(row) {
   const card = document.createElement('div');
   card.className = `ssl-card ssl-status-${row.status}`;
+  const nsText = row.nsRecords?.length ? row.nsRecords.join(', ') : null;
+  const dnsLine = [row.dnsAdmin, nsText].filter(Boolean).join(' · ');
+  // Misma jerarquía que la card de servidor: técnico (IP) → organizacional (empresa)
+  // → propósito (label) → conexión (dns admin) → gap → métrica (días/vencimiento).
   card.innerHTML =
     `<div class="ssl-card-header">` +
       `<span class="ssl-dot ${row.status}"></span>` +
-      `<span class="ssl-card-domain">${escHtml(row.domain)}</span>` +
+      `<span class="ssl-card-domain" title="${escHtml(row.domain)}">${escHtml(row.domain)}</span>` +
+      `<button class="infra-edit-btn" title="Editar" data-edit-domain="${escHtml(row.domain)}">✎</button>` +
+      `<button class="infra-hide-btn" title="Ocultar de la vista" data-hide-domain="${escHtml(row.domain)}">×</button>` +
     `</div>` +
+    `<div class="ssl-card-ip">${row.resolvedIp ? escHtml(row.resolvedIp) : 'sin IP'}</div>` +
+    (row.empresa ? `<div class="ssl-card-empresa">${escHtml(row.empresa)}</div>` : '') +
     `<div class="ssl-card-label">${escHtml(row.label)}</div>` +
-    `<div class="ssl-card-days ssl-status-${row.status}">${escHtml(sslDaysText(row))}</div>` +
-    `<div class="ssl-card-date">${escHtml(sslExpiresText(row))}</div>`;
+    (dnsLine ? `<div class="ssl-card-dns">${escHtml(dnsLine)}</div>` : '') +
+    `<div class="ssl-card-metrics">` +
+      `<div class="ssl-metric-row">` +
+        `<span class="ssl-metric-label">Vence en</span>` +
+        `<span class="ssl-card-days ssl-status-${row.status}">${escHtml(sslDaysTextLong(row))}</span>` +
+      `</div>` +
+      `<div class="ssl-metric-row">` +
+        `<span class="ssl-metric-label">Fecha</span>` +
+        `<span class="ssl-card-date">${escHtml(sslExpiresText(row))}</span>` +
+      `</div>` +
+    `</div>`;
+
+  card.querySelector('.infra-edit-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openSslManageAndFocus(row.domain);
+  });
+  card.querySelector('.infra-hide-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const hidden = getSslHidden();
+    hidden.add(row.domain);
+    saveSslHidden(hidden);
+    renderSSLMonitor(sslData);
+  });
+
   return card;
 }
 
@@ -2316,7 +2420,7 @@ function renderSSLAsList(domains) {
   table.className = 'ssl-table data-table';
   table.innerHTML =
     `<thead><tr>` +
-    `<th>DOMINIO</th><th>EMPRESA</th><th>ESTADO</th><th>DÍAS</th><th>VENCE</th>` +
+    `<th>DOMINIO</th><th>EMPRESA</th><th>IP</th><th>ESTADO</th><th>DÍAS</th><th>VENCE</th>` +
     `</tr></thead>`;
   const tbody = document.createElement('tbody');
   for (const row of sorted) {
@@ -2324,6 +2428,7 @@ function renderSSLAsList(domains) {
     tr.innerHTML =
       `<td><code>${escHtml(row.domain)}</code></td>` +
       `<td style="color:var(--text-faint)">${escHtml(row.empresa || '—')}</td>` +
+      `<td style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-faint)">${escHtml(row.resolvedIp || '—')}</td>` +
       `<td><span class="ssl-dot ${row.status}"></span> <span class="ssl-status-${row.status}">${SSL_STATUS_LABEL[row.status] ?? row.status}</span></td>` +
       `<td class="ssl-status-${row.status}">${escHtml(sslDaysText(row))}</td>` +
       `<td style="font-family:var(--font-mono);font-size:0.7rem">${escHtml(sslExpiresText(row))}</td>`;
@@ -2342,12 +2447,36 @@ function renderSSLMonitor(data) {
   }
   updateSSLBadge(data.summary ?? {});
   container.innerHTML = '';
+
+  const hidden      = getSslHidden();
+  const visible      = data.domains.filter(d => !hidden.has(d.domain));
+  const hiddenCount  = data.domains.length - visible.length;
+  const active   = visible.filter(d => !d.archived);
+  const archived = visible.filter(d => d.archived);
+
+  const showBtn = document.getElementById('btn-ssl-show-hidden');
+  if (showBtn) {
+    showBtn.style.display = hiddenCount > 0 ? '' : 'none';
+    showBtn.textContent = `↺ Mostrar ocultos (${hiddenCount})`;
+  }
+
   let rendered;
-  if (sslView === 'domain')   rendered = renderSSLByDomain(data.domains);
-  else if (sslView === 'empresa') rendered = renderSSLByEmpresa(data.domains);
-  else if (sslView === 'list')    rendered = renderSSLAsList(data.domains);
-  else                            rendered = renderSSLByExpiry(data.domains);
+  if (sslView === 'domain')   rendered = renderSSLByDomain(active);
+  else if (sslView === 'empresa') rendered = renderSSLByEmpresa(active);
+  else if (sslView === 'list')    rendered = renderSSLAsList(active);
+  else                            rendered = renderSSLByExpiry(active);
   container.appendChild(rendered);
+
+  if (archived.length) {
+    const grid = document.createElement('div');
+    grid.className = 'ssl-grid';
+    archived.forEach(row => grid.appendChild(buildSSLCard(row)));
+    container.appendChild(buildAccordion('Archivados', archived.length, grid, {
+      startOpen:  false,
+      storageKey: 'ssl-archived',
+      title: 'Decisión tomada — no cuentan para las alertas de vencimiento',
+    }));
+  }
 }
 
 async function loadSSL(force = false) {
@@ -2828,34 +2957,44 @@ function renderManageTable(domains) {
   addRow.innerHTML =
     `<input class="ssl-input" id="ssl-new-domain" placeholder="dominio.com.ar" />` +
     `<input class="ssl-input" id="ssl-new-label"  placeholder="Etiqueta" />` +
+    `<input class="ssl-input" id="ssl-new-empresa" placeholder="Empresa" />` +
+    `<input class="ssl-input" id="ssl-new-dnsadmin" placeholder="Admin DNS (opcional)" />` +
     `<button class="btn btn-sm btn-primary btn-ssl-action add" id="btn-ssl-add">+ Agregar</button>`;
   c.appendChild(addRow);
 
   document.getElementById('btn-ssl-add').addEventListener('click', async () => {
-    const domain = document.getElementById('ssl-new-domain').value.trim();
-    const label  = document.getElementById('ssl-new-label').value.trim();
+    const domain   = document.getElementById('ssl-new-domain').value.trim();
+    const label    = document.getElementById('ssl-new-label').value.trim();
+    const empresa  = document.getElementById('ssl-new-empresa').value.trim();
+    const dnsAdmin = document.getElementById('ssl-new-dnsadmin').value.trim();
     if (!domain) return;
-    await saveConfig([...domains, { domain, label: label || domain }]);
+    await saveConfig([...domains, { domain, label: label || domain, empresa, dnsAdmin }]);
   });
 
   // Tabla editable
   const table = document.createElement('table');
   table.className = 'ssl-table data-table';
-  table.innerHTML = `<thead><tr><th>DOMINIO</th><th>ETIQUETA</th><th></th></tr></thead>`;
+  table.innerHTML = `<thead><tr><th>DOMINIO</th><th>ETIQUETA</th><th>EMPRESA</th><th>ADMIN DNS</th><th></th></tr></thead>`;
   const tbody = document.createElement('tbody');
 
   domains.forEach((entry, idx) => {
     const tr = document.createElement('tr');
     tr.dataset.idx = idx;
+    tr.dataset.domain = entry.domain;
 
-    const tdDomain = document.createElement('td');
-    const tdLabel  = document.createElement('td');
-    const tdActs   = document.createElement('td');
+    const tdDomain  = document.createElement('td');
+    const tdLabel   = document.createElement('td');
+    const tdEmpresa = document.createElement('td');
+    const tdDns     = document.createElement('td');
+    const tdActs    = document.createElement('td');
     tdActs.style.whiteSpace = 'nowrap';
 
     function viewMode() {
-      tdDomain.innerHTML = `<span class="ssl-domain">${escHtml(entry.domain)}</span>`;
-      tdLabel.innerHTML  = `<span class="ssl-label">${escHtml(entry.label)}</span>`;
+      const archivedTag = entry.archived ? ` <span class="ssl-status-archived" style="font-size:0.62rem;font-weight:700;letter-spacing:0.06em">● ARCHIVADO</span>` : '';
+      tdDomain.innerHTML  = `<span class="ssl-domain">${escHtml(entry.domain)}</span>${archivedTag}`;
+      tdLabel.innerHTML   = `<span class="ssl-label">${escHtml(entry.label)}</span>`;
+      tdEmpresa.innerHTML = `<span style="color:var(--text-faint)">${escHtml(entry.empresa || '—')}</span>`;
+      tdDns.innerHTML     = `<span style="color:var(--text-faint)">${escHtml(entry.dnsAdmin || '—')}</span>`;
       tdActs.innerHTML   = '';
 
       const btnEdit = document.createElement('button');
@@ -2863,32 +3002,55 @@ function renderManageTable(domains) {
       btnEdit.textContent = 'Editar';
       btnEdit.addEventListener('click', editMode);
 
+      const btnArchive = document.createElement('button');
+      btnArchive.className = 'btn btn-sm btn-warning btn-ssl-action';
+      btnArchive.textContent = entry.archived ? 'Desarchivar' : 'Archivar';
+      btnArchive.title = entry.archived
+        ? 'Volver a monitorear este dominio activamente'
+        : 'Sacar de las alertas — para problemas con decisión tomada (ej: dominio no se renueva)';
+      btnArchive.addEventListener('click', async () => {
+        let archivedNote = entry.archivedNote ?? '';
+        if (!entry.archived) {
+          archivedNote = window.prompt('Motivo del archivado (opcional):', archivedNote) ?? archivedNote;
+        }
+        const updated = domains.map((d, i) =>
+          i === idx ? { ...d, archived: !entry.archived, archivedNote: !entry.archived ? archivedNote : '' } : d
+        );
+        await saveConfig(updated);
+      });
+
       const btnDel = document.createElement('button');
       btnDel.className = 'btn btn-sm btn-danger btn-ssl-action del';
       btnDel.textContent = 'Eliminar';
+      btnDel.title = 'Eliminación definitiva del monitoreo';
       btnDel.addEventListener('click', async () => {
         const updated = domains.filter((_, i) => i !== idx);
         await saveConfig(updated);
       });
 
       tdActs.appendChild(btnEdit);
+      tdActs.appendChild(btnArchive);
       tdActs.appendChild(btnDel);
     }
 
     function editMode() {
-      tdDomain.innerHTML = `<input class="ssl-input" value="${escHtml(entry.domain)}" id="edit-domain-${idx}" />`;
-      tdLabel.innerHTML  = `<input class="ssl-input" value="${escHtml(entry.label)}"  id="edit-label-${idx}"  />`;
+      tdDomain.innerHTML  = `<input class="ssl-input" value="${escHtml(entry.domain)}" id="edit-domain-${idx}" />`;
+      tdLabel.innerHTML   = `<input class="ssl-input" value="${escHtml(entry.label)}"  id="edit-label-${idx}"  />`;
+      tdEmpresa.innerHTML = `<input class="ssl-input" value="${escHtml(entry.empresa ?? '')}"  id="edit-empresa-${idx}"  />`;
+      tdDns.innerHTML     = `<input class="ssl-input" value="${escHtml(entry.dnsAdmin ?? '')}" id="edit-dnsadmin-${idx}" />`;
       tdActs.innerHTML   = '';
 
       const btnSave = document.createElement('button');
       btnSave.className = 'btn btn-sm btn-success btn-ssl-action add';
       btnSave.textContent = 'Guardar';
       btnSave.addEventListener('click', async () => {
-        const newDomain = document.getElementById(`edit-domain-${idx}`).value.trim();
-        const newLabel  = document.getElementById(`edit-label-${idx}`).value.trim();
+        const newDomain   = document.getElementById(`edit-domain-${idx}`).value.trim();
+        const newLabel    = document.getElementById(`edit-label-${idx}`).value.trim();
+        const newEmpresa  = document.getElementById(`edit-empresa-${idx}`).value.trim();
+        const newDnsAdmin = document.getElementById(`edit-dnsadmin-${idx}`).value.trim();
         if (!newDomain) return;
         const updated = domains.map((d, i) =>
-          i === idx ? { domain: newDomain, label: newLabel || newDomain } : d
+          i === idx ? { ...d, domain: newDomain, label: newLabel || newDomain, empresa: newEmpresa, dnsAdmin: newDnsAdmin } : d
         );
         await saveConfig(updated);
       });
@@ -2905,6 +3067,8 @@ function renderManageTable(domains) {
     viewMode();
     tr.appendChild(tdDomain);
     tr.appendChild(tdLabel);
+    tr.appendChild(tdEmpresa);
+    tr.appendChild(tdDns);
     tr.appendChild(tdActs);
     tbody.appendChild(tr);
   });
@@ -2954,9 +3118,29 @@ function toggleManageMode() {
   if (sslManageMode) loadManage();
 }
 
+// Abre "Gestionar" (si no está abierto) y lleva la vista a la fila de un dominio puntual —
+// evita que editar un dominio archivado implique buscarlo a mano en la tabla completa.
+async function openSslManageAndFocus(domain) {
+  if (!sslManageMode) toggleManageMode();
+  else await loadManage();
+
+  setTimeout(() => {
+    const row = document.querySelector(`#ssl-manage-container tr[data-domain="${CSS.escape(domain)}"]`);
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('ssl-row-flash');
+    setTimeout(() => row.classList.remove('ssl-row-flash'), 1500);
+  }, 150);
+}
+
 function initSSL() {
   document.getElementById('btn-ssl-refresh').addEventListener('click', () => loadSSL(true));
   document.getElementById('btn-ssl-manage').addEventListener('click', toggleManageMode);
+
+  document.getElementById('btn-ssl-show-hidden')?.addEventListener('click', () => {
+    localStorage.removeItem(HIDDEN_SSL_KEY);
+    if (sslData) renderSSLMonitor(sslData);
+  });
 
   document.querySelectorAll('.btn-ssl-view').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3097,7 +3281,7 @@ function buildServerCard(srv) {
     `<div class="infra-os">${escHtml(srv.os)}</div>` +
     `<div class="infra-empresa">${escHtml(srv.empresa)}</div>` +
     `<div class="infra-rol">${escHtml(srv.rol)}</div>` +
-    (srv.sshUser ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${srv.mysqlTunel.split(' ')[1]}` : ''}</div>` : '') +
+    (srv.sshUser ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${escHtml(String(srv.mysqlTunel))}` : ''}</div>` : '') +
     (srv.puerto  ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
     (srv.notas   ? `<div class="infra-notas">${escHtml(srv.notas)}</div>` : '') +
     (srv.monitoreado ? `<div class="infra-metrics"><div class="metric-loading">actualizando…</div></div>` : '') +
@@ -3739,6 +3923,7 @@ const METRICS_INTERVAL_MS = 60_000;
 // === Init ===
 async function init() {
   initTheme();
+  initSidebar();
   initTabs();
   initProjects();
   renderGovern();
