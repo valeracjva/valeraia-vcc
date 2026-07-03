@@ -1,6 +1,7 @@
 node_modules/
 *.log
 .env
+.worktrees/
 
 # Backups de frontend pre-migración
 *.before-f0-ui
