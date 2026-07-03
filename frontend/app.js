@@ -1,3 +1,5 @@
+import { computeImpact } from './opsmap-impact.js';
+
 // === Acordeón unificado ===
 // Todas las vistas usan este helper para garantizar look&feel idéntico.
 // storageKey: si se provee, el estado colapsado se persiste en localStorage.
@@ -1111,6 +1113,7 @@ function renderCockpit(status, sections, tunnelData, runtime) {
 
 // === F2 — Mapa Operativo ===
 let opsMapData = null;
+let incidentMode = false;
 
 function riskClass(value) {
   return String(value ?? 'bajo')
@@ -1211,6 +1214,62 @@ function renderOpsDetail(node) {
   `;
 }
 
+const OPS_TYPE_LABELS = {
+  server: 'servidores',
+  domain: 'dominios',
+  environment: 'ambientes',
+  project: 'proyectos',
+  tunnel: 'túneles',
+  mcp: 'MCPs',
+};
+
+function applyIncidentHighlight(impactResult) {
+  const nodesEl = document.getElementById('opsmap-nodes');
+  if (!nodesEl) return;
+  const impactedIds = new Set(impactResult ? impactResult.impacted.map(n => n.id) : []);
+  if (impactResult) impactedIds.add(impactResult.originId);
+  nodesEl.querySelectorAll('.ops-node').forEach(el => {
+    el.classList.remove('impacted', 'dimmed');
+    if (!impactResult) return;
+    if (impactedIds.has(el.dataset.nodeId)) el.classList.add('impacted');
+    else el.classList.add('dimmed');
+  });
+}
+
+function renderImpactPanel(origin, impactResult) {
+  const detail = document.getElementById('opsmap-detail');
+  if (!detail) return;
+
+  const counts = Object.entries(impactResult.byType)
+    .map(([type, list]) => `${list.length} ${OPS_TYPE_LABELS[type] ?? type}`)
+    .join(' · ') || 'sin nodos impactados';
+
+  const groups = Object.entries(impactResult.byType).map(([type, list]) => `
+    <div class="opsmap-impact-group">
+      <div class="opsmap-impact-group-label">${escHtml(OPS_TYPE_LABELS[type] ?? type)}</div>
+      ${list.map(n => `<button class="opsmap-impact-item" data-node-id="${escHtml(n.id)}">${escHtml(n.label)}</button>`).join('')}
+    </div>
+  `).join('');
+
+  detail.innerHTML = `
+    <div class="opsmap-detail-kicker">Modo incidente</div>
+    <div class="opsmap-detail-title">${escHtml(origin.label)}</div>
+    <div class="opsmap-detail-sub">${escHtml(counts)}</div>
+    ${impactResult.hasCritical ? '<div class="opsmap-impact-badge">Impacto crítico</div>' : ''}
+    <div class="opsmap-impact-groups">${groups || '<p>No hay nodos impactados.</p>'}</div>
+  `;
+
+  detail.querySelectorAll('.opsmap-impact-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const node = (opsMapData?.nodes ?? []).find(n => n.id === btn.dataset.nodeId);
+      if (node) {
+        applyIncidentHighlight(null);
+        renderOpsDetail(node);
+      }
+    });
+  });
+}
+
 function prioritizeOpsNodes(data) {
   const nodes = data.nodes ?? buildOpsNodes(data);
   if (!data.nodes) return nodes;
@@ -1291,13 +1350,22 @@ function renderOpsMap(data) {
     const x = index === 0 ? 50 : 50 + Math.cos(angle) * radius;
     const y = index === 0 ? 50 : 50 + Math.sin(angle) * radius;
     btn.className = `ops-node type-${node.type} state-${node.state}${index === 0 ? ' is-core' : ''}`;
+    btn.dataset.nodeId = node.id;
     btn.style.left = `${Math.max(8, Math.min(92, x))}%`;
     btn.style.top = `${Math.max(8, Math.min(92, y))}%`;
     btn.innerHTML = `<strong>${escHtml(node.label)}</strong><span>${escHtml(node.sub)}</span>`;
     btn.addEventListener('click', () => {
       nodesEl.querySelectorAll('.ops-node').forEach(n => n.classList.remove('selected'));
       btn.classList.add('selected');
-      renderOpsDetail(node);
+      const canAnalyzeImpact = incidentMode && (node.type === 'server' || node.type === 'domain') && data.nodes && data.links;
+      if (canAnalyzeImpact) {
+        const impactResult = computeImpact(node.id, data.nodes, data.links);
+        applyIncidentHighlight(impactResult);
+        renderImpactPanel(node, impactResult);
+      } else {
+        applyIncidentHighlight(null);
+        renderOpsDetail(node);
+      }
     });
     nodesEl.appendChild(btn);
     if (index === 0) btn.classList.add('selected');
@@ -1651,6 +1719,18 @@ async function update() {
 
 function initOpsMap() {
   document.getElementById('btn-opsmap-refresh')?.addEventListener('click', () => loadOpsMap());
+  document.getElementById('opsmap-incident-toggle')?.addEventListener('change', (e) => {
+    incidentMode = e.target.checked;
+    if (!incidentMode) {
+      applyIncidentHighlight(null);
+      const nodesEl = document.getElementById('opsmap-nodes');
+      const selectedBtn = nodesEl?.querySelector('.ops-node.selected');
+      const selectedNode = selectedBtn
+        ? (opsMapData?.nodes ?? []).find(n => n.id === selectedBtn.dataset.nodeId)
+        : null;
+      if (selectedNode) renderOpsDetail(selectedNode);
+    }
+  });
 }
 
 // === M15 — APIs VCC ===
