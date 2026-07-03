@@ -2824,6 +2824,69 @@ html[data-theme="light"] .ops-node { background: rgba(245,242,237,0.88); }
 .opsmap-detail-state.state-alto { color: var(--warning); border-color: rgba(245,158,11,0.34); }
 .opsmap-detail-state.state-critico { color: var(--danger); border-color: rgba(239,68,68,0.34); }
 
+.opsmap-incident-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.opsmap-incident-toggle input[type="checkbox"] {
+  accent-color: var(--danger);
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.ops-node.impacted {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.35), 0 18px 34px rgba(0,0,0,0.24);
+}
+.ops-node.dimmed { opacity: 0.28; }
+
+.opsmap-impact-badge {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(239,68,68,0.4);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.opsmap-impact-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.opsmap-impact-group-label {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.opsmap-impact-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.opsmap-impact-item:hover { border-color: var(--accent-2); }
+
 /* ── M15. APIs VCC ─────────────────────────────────────────────────── */
 .apis-toolbar .view-toolbar-start { gap: 12px; }
 .apis-subtitle {
