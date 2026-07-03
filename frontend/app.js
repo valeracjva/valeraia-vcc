@@ -1263,7 +1263,6 @@ function renderImpactPanel(origin, impactResult) {
     btn.addEventListener('click', () => {
       const node = (opsMapData?.nodes ?? []).find(n => n.id === btn.dataset.nodeId);
       if (node) {
-        applyIncidentHighlight(null);
         renderOpsDetail(node);
       }
     });
