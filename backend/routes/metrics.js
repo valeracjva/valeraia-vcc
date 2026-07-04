@@ -26,13 +26,15 @@ async function getSSHServers() {
 const router = Router();
 
 const CACHE_TTL_MS = 60_000;
-const cache = {}; // { serverId: { ts, data } }
+const HISTORY_MAX  = 20; // ~20 min de trend a intervalo de refresco de 60s
+const cache = {}; // { serverId: { ts, data, history: [{ts,cpu,ram,disk}] } }
 
-// Comando: CPU% (snapshot /proc/stat), RAM%, RAM total MB, Disk%, Disk total GB
+// Comando: CPU% (snapshot /proc/stat), RAM%, RAM total MB, Disk%, Disk total GB, cores, load avg 1m
 const CMD = [
   "awk '/^cpu /{idle=$5;tot=0;for(i=2;i<=NF;i++)tot+=$i;printf \"%.0f\\n\",100*(tot-idle)/tot}' /proc/stat",
   "free -m | awk '/Mem:/{printf \"%.0f %d\\n\",$3*100/$2,$2}'",
   "df / | awk 'NR==2{sub(/%/,\"\",$5);printf \"%s %d\\n\",$5,int($2/1024/1024)}'",
+  "echo \"$(nproc) $(awk '{print $1}' /proc/loadavg)\"",
 ].join(' && ');
 
 function sshExec(conf, cmd) {
@@ -103,16 +105,17 @@ function sshExec(conf, cmd) {
 
 function parse(out) {
   const lines = out.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 3) return null;
+  if (lines.length < 4) return null;
 
   const cpu   = parseInt(lines[0], 10);
   const [ramPct, ramMB] = lines[1].split(' ').map(Number);
   const [diskPct, diskGB] = lines[2].split(' ').map(Number);
+  const [cores, load1] = lines[3].split(' ').map(Number);
 
-  if ([cpu, ramPct, ramMB, diskPct, diskGB].some(isNaN)) return null;
+  if ([cpu, ramPct, ramMB, diskPct, diskGB, cores, load1].some(isNaN)) return null;
 
   return {
-    cpu:    { pct: cpu },
+    cpu:    { pct: cpu, cores, load1 },
     ram:    { pct: ramPct,  totalMB: ramMB },
     disk:   { pct: diskPct, totalGB: diskGB },
   };
@@ -138,6 +141,21 @@ async function fetchOne(serverId, conf) {
   return { serverId, status: 'ok', ...metrics };
 }
 
+async function fetchWithHistory(id, conf, force, now) {
+  const prev = cache[id];
+  if (!force && prev && (now - prev.ts) < CACHE_TTL_MS) {
+    return { ...prev.data, cached: true, history: prev.history };
+  }
+  const data = await fetchOne(id, conf);
+  const history = prev?.history ? [...prev.history] : [];
+  if (data.status === 'ok') {
+    history.push({ ts: now, cpu: data.cpu.pct, ram: data.ram.pct, disk: data.disk.pct });
+    if (history.length > HISTORY_MAX) history.shift();
+  }
+  cache[id] = { ts: now, data, history };
+  return { ...data, cached: false, history };
+}
+
 // GET /api/metrics — todos los servidores en paralelo
 router.get('/', async (req, res) => {
   const force = req.query.force === '1';
@@ -145,14 +163,7 @@ router.get('/', async (req, res) => {
 
   const SSH_SERVERS = await getSSHServers();
   const ids = Object.keys(SSH_SERVERS);
-  const results = await Promise.all(ids.map(async (id) => {
-    if (!force && cache[id] && (now - cache[id].ts) < CACHE_TTL_MS) {
-      return { ...cache[id].data, cached: true };
-    }
-    const data = await fetchOne(id, SSH_SERVERS[id]);
-    cache[id] = { ts: now, data };
-    return { ...data, cached: false };
-  }));
+  const results = await Promise.all(ids.map((id) => fetchWithHistory(id, SSH_SERVERS[id], force, now)));
 
   res.json({ metrics: results, checkedAt: new Date().toISOString() });
 });
@@ -166,13 +177,7 @@ router.get('/:id', async (req, res) => {
   const SSH_SERVERS = await getSSHServers();
   if (!SSH_SERVERS[id]) return res.status(404).json({ error: `Servidor desconocido: ${id}` });
 
-  if (!force && cache[id] && (now - cache[id].ts) < CACHE_TTL_MS) {
-    return res.json({ ...cache[id].data, cached: true });
-  }
-
-  const data = await fetchOne(id, SSH_SERVERS[id]);
-  cache[id] = { ts: now, data };
-  res.json({ ...data, cached: false });
+  res.json(await fetchWithHistory(id, SSH_SERVERS[id], force, now));
 });
 
 export default router;

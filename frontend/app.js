@@ -3345,7 +3345,7 @@ function buildServerCard(srv) {
 
   const riskColor = RISK_COLORS[srv.riesgo] ?? '#888';
   const riskLabel = RISK_LABELS[srv.riesgo] ?? srv.riesgo.toUpperCase();
-  const hasDetails = srv.apps.length > 0 || srv.dominios.length > 0;
+  const hasDetails = srv.apps.length > 0 || srv.dominios.length > 0 || !!srv.notas;
 
   card.innerHTML =
     `<div class="infra-card-header">` +
@@ -3362,7 +3362,6 @@ function buildServerCard(srv) {
     `<div class="infra-rol">${escHtml(srv.rol)}</div>` +
     (srv.sshUser ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${escHtml(String(srv.mysqlTunel))}` : ''}</div>` : '') +
     (srv.puerto  ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
-    (srv.notas   ? `<div class="infra-notas">${escHtml(srv.notas)}</div>` : '') +
     (srv.monitoreado ? `<div class="infra-metrics"><div class="metric-loading">actualizando…</div></div>` : '') +
     (hasDetails  ?
       `<div class="infra-toggle" data-open="false">` +
@@ -3408,6 +3407,7 @@ function buildToggleLabel(srv) {
   const parts = [];
   if (srv.apps.length)     parts.push(`${srv.apps.length} app${srv.apps.length > 1 ? 's' : ''}`);
   if (srv.dominios.length) parts.push(`${srv.dominios.length} dominio${srv.dominios.length > 1 ? 's' : ''}`);
+  if (srv.notas)           parts.push('notas');
   return parts.join(' · ');
 }
 
@@ -3423,6 +3423,11 @@ function buildDetails(srv) {
   if (srv.dominios.length) {
     html += `<div class="infra-detail-section"><span class="infra-detail-label">Dominios</span>`;
     html += srv.dominios.map(d => `<div class="infra-detail-item">${escHtml(d)}</div>`).join('');
+    html += `</div>`;
+  }
+  if (srv.notas) {
+    html += `<div class="infra-detail-section"><span class="infra-detail-label">Notas</span>`;
+    html += `<div class="infra-detail-item">${escHtml(srv.notas)}</div>`;
     html += `</div>`;
   }
   return html;
@@ -3913,16 +3918,44 @@ function initInventory() {
 }
 
 // === M13 — Métricas de servidores ===
-function metricBar(label, pct) {
-  const clamped = Math.min(100, Math.max(0, pct));
-  const color = clamped >= 85 ? 'var(--red)' : clamped >= 70 ? 'var(--amber)' : 'var(--green)';
+function fmtGB(mb) {
+  const gb = mb / 1024;
+  return gb >= 10 ? gb.toFixed(0) : gb.toFixed(1);
+}
+
+function sparklineSvg(values, color) {
+  if (!values || values.length < 2) return '';
+  const w = 28, h = 14;
+  const max = Math.max(100, ...values);
+  const step = w / (values.length - 1);
+  const linePts = values.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`);
+  const areaPts = [`0,${h}`, ...linePts, `${w},${h}`].join(' ');
+  const gid = `spk-${Math.random().toString(36).slice(2, 8)}`;
   return (
-    `<div class="metric-row">` +
+    `<svg class="metric-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">` +
+      `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">` +
+        `<stop offset="0%" stop-color="${color}" stop-opacity="0.45"/>` +
+        `<stop offset="100%" stop-color="${color}" stop-opacity="0"/>` +
+      `</linearGradient></defs>` +
+      `<polygon points="${areaPts}" fill="url(#${gid})" stroke="none"/>` +
+      `<polyline points="${linePts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `</svg>`
+  );
+}
+
+function metricBar(label, pct, absText, sparkValues) {
+  const clamped = Math.min(100, Math.max(0, pct));
+  const level = clamped >= 85 ? 'crit' : clamped >= 70 ? 'warn' : 'ok';
+  const color = level === 'crit' ? 'var(--red)' : level === 'warn' ? 'var(--amber)' : 'var(--green)';
+  return (
+    `<div class="metric-row metric-${level}" title="${escHtml(label)}: ${escHtml(absText ?? '')}">` +
       `<span class="metric-label">${label}</span>` +
       `<div class="metric-bar-track">` +
         `<div class="metric-bar-fill" style="width:${clamped}%;background:${color}"></div>` +
       `</div>` +
       `<span class="metric-value" style="color:${color}">${clamped}%</span>` +
+      `<span class="metric-abs">${escHtml(absText ?? '')}</span>` +
+      sparklineSvg(sparkValues, color) +
     `</div>`
   );
 }
@@ -3934,9 +3967,23 @@ function applyMetrics(m) {
   const tip = m.status === 'ok' ? 'Conectado'
     : m.status === 'unreachable' ? `Sin acceso${m.error ? ': ' + m.error : ''}`
     : 'Error de datos';
-  const metricsHtml = m.status !== 'ok'
-    ? `<div class="metric-unreachable">— sin acceso</div>`
-    : metricBar('CPU', m.cpu.pct) + metricBar('RAM', m.ram.pct) + metricBar('DSK', m.disk.pct);
+
+  let metricsHtml = `<div class="metric-unreachable">— sin acceso</div>`;
+  if (m.status === 'ok') {
+    const hist = m.history || [];
+    const cpuHist  = hist.map(h => h.cpu);
+    const ramHist  = hist.map(h => h.ram);
+    const diskHist = hist.map(h => h.disk);
+
+    const cpuAbs  = `${m.cpu.cores}c·${m.cpu.load1.toFixed(2)}`;
+    const ramAbs  = `${fmtGB(m.ram.totalMB * m.ram.pct / 100)}/${fmtGB(m.ram.totalMB)} GB`;
+    const diskAbs = `${Math.round(m.disk.totalGB * m.disk.pct / 100)}/${m.disk.totalGB} GB`;
+
+    metricsHtml =
+      metricBar('CPU', m.cpu.pct,  cpuAbs,  cpuHist) +
+      metricBar('RAM', m.ram.pct,  ramAbs,  ramHist) +
+      metricBar('DSK', m.disk.pct, diskAbs, diskHist);
+  }
 
   // Vista card
   const card = document.querySelector(`.infra-card[data-server="${escHtml(m.serverId)}"]`);

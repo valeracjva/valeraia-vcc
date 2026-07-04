@@ -1745,7 +1745,7 @@ button { font-family: var(--font-ui); }
 /* ── 13. M4 — Inventario Infra ─────────────────────────── */
 .infra-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 10px;
 }
 
@@ -1865,20 +1865,22 @@ button { font-family: var(--font-ui); }
 .metric-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-bottom: 5px;
+  cursor: default;
 }
 
 .metric-label {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: var(--text-faint);
-  width: 2.6rem;
+  width: 2.1rem;
   flex-shrink: 0;
 }
 
 .metric-bar-track {
   flex: 1;
+  min-width: 24px;
   height: 4px;
   background: var(--surface-3);
   border-radius: 2px;
@@ -1888,16 +1890,49 @@ button { font-family: var(--font-ui); }
 .metric-bar-fill {
   height: 100%;
   border-radius: 2px;
-  transition: width 0.3s ease;
+  transition: width 0.4s ease, box-shadow 0.3s ease;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.metric-row.metric-ok   .metric-bar-fill { color: var(--green); }
+.metric-row.metric-warn .metric-bar-fill { color: var(--amber); }
+.metric-row.metric-crit .metric-bar-fill { animation: metric-pulse-glow 1.6s ease-in-out infinite; }
+
+@keyframes metric-pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px var(--red); }
+  50%      { box-shadow: 0 0 11px var(--red); }
 }
 
 .metric-value {
   font-family: var(--font-mono);
+  font-weight: 600;
   font-size: 0.65rem;
-  width: 2.8rem;
+  width: 2.2rem;
   text-align: right;
   flex-shrink: 0;
 }
+
+.metric-abs {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-faint);
+  width: 3.6rem;
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-spark {
+  width: 28px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+
+.metric-row:hover .metric-spark { opacity: 1; }
 
 .metric-unreachable {
   font-family: var(--font-mono);
