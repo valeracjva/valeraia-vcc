@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { readFile } from 'fs/promises';
 import net from 'net';
 import { PATHS } from '../config.js';
+import { getCachedMetrics } from './metrics.js';
 
 const router = Router();
 
@@ -64,6 +65,25 @@ function addLink(list, from, to, type, label = type) {
   list.push({ from, to, type, label });
 }
 
+// Estado real del servidor a partir de la última métrica cacheada (metrics.js),
+// no del campo estático `riesgo`. `null` si nunca se monitoreó/todavía no hay dato.
+function healthState(health) {
+  if (!health) return null;
+  if (health.status !== 'ok') return 'critico'; // unreachable / parse-error / timeout / no-config
+  const worst = Math.max(health.cpu?.pct ?? 0, health.ram?.pct ?? 0, health.disk?.pct ?? 0);
+  if (worst >= 85) return 'critico';
+  if (worst >= 70) return 'watch';
+  return 'fresh';
+}
+
+function healthDetail(base, health) {
+  if (!health) return base;
+  if (health.status === 'ok') {
+    return `${base} CPU ${health.cpu.pct}% · RAM ${health.ram.pct}% · Disco ${health.disk.pct}%.`;
+  }
+  return `${base} Sin acceso SSH${health.error ? `: ${health.error}` : ''}.`;
+}
+
 router.get('/', async (_req, res, next) => {
   try {
     const [registry, serversCfg, sslCfg, tunnelsCfg, runtime, recent] = await Promise.all([
@@ -96,10 +116,18 @@ router.get('/', async (_req, res, next) => {
     const domainSet = new Set(domains.map(d => String(d.domain).toLowerCase()));
 
     for (const server of servers) {
+      const health = server.monitoreado === true ? getCachedMetrics(server.id) : null;
+      const liveState = healthState(health);
       addNode(nodes, {
         id: `server:${server.id}`, type: 'server', label: server.id, sub: server.ip,
-        state: nodeState(server.riesgo), risk: server.riesgo, detail: server.rol || server.empresa || 'Servidor registrado.',
-        meta: { empresa: server.empresa, os: server.os, monitoreado: server.monitoreado === true },
+        // Con métrica real disponible, manda por sobre el `riesgo` estático de config.
+        state: liveState ?? nodeState(server.riesgo),
+        risk: server.riesgo,
+        detail: healthDetail(server.rol || server.empresa || 'Servidor registrado.', health),
+        meta: {
+          empresa: server.empresa, os: server.os, monitoreado: server.monitoreado === true,
+          health: health ? { status: health.status, cpu: health.cpu?.pct, ram: health.ram?.pct, disk: health.disk?.pct, checkedAt: health.checkedAt } : null,
+        },
       });
       addLink(links, 'workspace', `server:${server.id}`, 'contains', 'inventario');
 

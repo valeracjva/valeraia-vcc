@@ -162,6 +162,14 @@ async function fetchWithHistory(id, conf, force, now) {
   return { ...data, cached: false, history };
 }
 
+// Lectura sin disparar SSH — usada por opsmap.js para reflejar salud real
+// sin duplicar el polling que ya hace Inventario cada 60s.
+export function getCachedMetrics(serverId) {
+  const entry = cache[serverId];
+  if (!entry) return null;
+  return { ...entry.data, checkedAt: entry.ts };
+}
+
 // GET /api/metrics — todos los servidores en paralelo
 router.get('/', async (req, res) => {
   const force = req.query.force === '1';
