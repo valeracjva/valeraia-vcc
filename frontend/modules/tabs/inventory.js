@@ -641,7 +641,8 @@ function applyMetrics(m) {
     const ramHist  = hist.map(h => h.ram);
     const diskHist = hist.map(h => h.disk);
 
-    const cpuAbs  = `${base.cpu.cores}c·${base.cpu.load1.toFixed(2)}`;
+    // load1 es null en servidores Windows (WinRM) -- no hay equivalente a load average de Linux.
+    const cpuAbs  = base.cpu.load1 === null ? `${base.cpu.cores}c` : `${base.cpu.cores}c·${base.cpu.load1.toFixed(2)}`;
     const ramAbs  = `${fmtGB(base.ram.totalMB * base.ram.pct / 100)}/${fmtGB(base.ram.totalMB)} GB`;
     const diskAbs = `${Math.round(base.disk.totalGB * base.disk.pct / 100)}/${base.disk.totalGB} GB`;
 

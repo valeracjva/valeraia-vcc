@@ -1,24 +1,30 @@
 import { Router } from 'express';
 import { readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
+import { execFile } from 'child_process';
 import { homedir } from 'os';
 import path from 'path';
 import { timingSafeEqual } from 'crypto';
 import { Client } from 'ssh2';
 import { PATHS } from '../config.js';
 
-async function getSSHServers() {
+async function getMonitoredServers() {
   const raw = await readFile(PATHS.serversConfig, 'utf8');
   const { servers } = JSON.parse(raw);
   const result = {};
   for (const s of servers) {
-    if (!s.monitoreado || !s.sshUser || !s.sshKey) continue;
-    result[s.id] = {
-      host:        s.ip,
-      user:        s.sshUser,
-      key:         path.join(homedir(), s.sshKey),
-      fingerprint: s.fingerprint ?? null,
-    };
+    if (!s.monitoreado) continue;
+    if (s.sshUser && s.sshKey) {
+      result[s.id] = {
+        type:        'ssh',
+        host:        s.ip,
+        user:        s.sshUser,
+        key:         path.join(homedir(), s.sshKey),
+        fingerprint: s.fingerprint ?? null,
+      };
+    } else if (s.winrmUser && s.winrmPassword) {
+      result[s.id] = { type: 'winrm', host: s.ip, user: s.winrmUser, password: s.winrmPassword };
+    }
   }
   return result;
 }
@@ -109,6 +115,87 @@ function sshExec(conf, cmd) {
   });
 }
 
+// Script PS ejecutado en el nodo remoto vía Invoke-Command -Credential.
+// No hay equivalente directo a "load average" de Linux en Windows -- se omite (null),
+// no se aproxima con CPU% para no confundir una metrica con la otra.
+const WINRM_SCRIPT = `
+$ErrorActionPreference = 'Stop'
+# Se arma el SecureString con la clase .NET directamente (no via ConvertTo-SecureString) --
+# ese cmdlet vive en un modulo con autoload que puede fallar bajo $ErrorActionPreference='Stop'
+# o con ps1xml de tipos corruptos en el perfil del operador; la clase base no depende de eso.
+$pass = New-Object System.Security.SecureString
+foreach ($ch in $env:VCC_WINRM_PASS.ToCharArray()) { $pass.AppendChar($ch) }
+$cred = New-Object System.Management.Automation.PSCredential($env:VCC_WINRM_USER, $pass)
+$r = Invoke-Command -ComputerName $env:VCC_WINRM_HOST -Credential $cred -ScriptBlock {
+  $os = Get-CimInstance Win32_OperatingSystem
+  $cpuLoad = (Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average
+  $cores = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
+  $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+  [PSCustomObject]@{
+    cpuPct      = [math]::Round($cpuLoad, 0)
+    cores       = $cores
+    ramPct      = [math]::Round((($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / $os.TotalVisibleMemorySize) * 100, 0)
+    ramTotalMB  = [math]::Round($os.TotalVisibleMemorySize / 1024, 0)
+    diskPct     = [math]::Round((($disk.Size - $disk.FreeSpace) / $disk.Size) * 100, 0)
+    diskTotalGB = [math]::Round($disk.Size / 1GB, 0)
+  }
+}
+$r | ConvertTo-Json -Compress
+`.trim();
+
+function winrmExec(conf) {
+  return new Promise((resolve) => {
+    // WinRM (autenticacion NTLM + spawn de powershell.exe + Invoke-Command real) es mas lento
+    // que un exec SSH directo -- el timeout corto de timeoutMsForHost() cortaba el proceso
+    // a mitad de la respuesta CLIXML antes de completar.
+    const timeoutMs = 15_000;
+    // -EncodedCommand (Base64 UTF-16LE) evita que Windows rompa el quoting/newlines
+    // de un script multilinea pasado como argumento de proceso via -Command.
+    const encoded = Buffer.from(WINRM_SCRIPT, 'utf16le').toString('base64');
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+      {
+        timeout: timeoutMs,
+        env: {
+          ...process.env,
+          VCC_WINRM_HOST: conf.host,
+          VCC_WINRM_USER: conf.user,
+          VCC_WINRM_PASS: conf.password,
+        },
+      },
+      (err, stdout, stderr) => {
+        if (err) {
+          // PowerShell serializa progreso/errores como CLIXML en stderr -- la primera linea es
+          // solo el header ("#< CLIXML"), el mensaje real esta mas adelante. Se extrae el texto
+          // legible de <ToString> si existe; si no, se recorta el bloque crudo (mas largo que
+          // una sola linea) para no perder el error real en el ruido de progress records.
+          const raw = stderr || err.message;
+          const toStringMatch = raw.match(/<ToString>([\s\S]*?)<\/ToString>/);
+          const msg = toStringMatch ? toStringMatch[1] : raw.replace(/<[^>]+>/g, ' ').trim();
+          return resolve({ error: msg.slice(0, 300) });
+        }
+        resolve({ out: stdout.trim() });
+      }
+    );
+  });
+}
+
+function parseWinrm(out) {
+  try {
+    const d = JSON.parse(out);
+    if ([d.cpuPct, d.cores, d.ramPct, d.ramTotalMB, d.diskPct, d.diskTotalGB].some(v => v === null || v === undefined || Number.isNaN(v)))
+      return null;
+    return {
+      cpu:  { pct: d.cpuPct, cores: d.cores, load1: null },
+      ram:  { pct: d.ramPct, totalMB: d.ramTotalMB },
+      disk: { pct: d.diskPct, totalGB: d.diskTotalGB },
+    };
+  } catch {
+    return null;
+  }
+}
+
 function parse(out) {
   const lines = out.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length < 4) return null;
@@ -130,14 +217,15 @@ function parse(out) {
 async function fetchOne(serverId, conf) {
   if (!conf) return { serverId, status: 'no-config' };
 
-  console.log(`[metrics] ${serverId} → ${conf.user}@${conf.host}  key=${conf.key}`);
-  const { out, error } = await sshExec(conf, CMD);
+  const isWinrm = conf.type === 'winrm';
+  console.log(`[metrics] ${serverId} → ${conf.user}@${conf.host}  ${isWinrm ? '(winrm)' : `key=${conf.key}`}`);
+  const { out, error } = isWinrm ? await winrmExec(conf) : await sshExec(conf, CMD);
   if (error) {
     console.error(`[metrics] ${serverId} FAIL: ${error}`);
     return { serverId, status: 'unreachable', error };
   }
 
-  const metrics = parse(out);
+  const metrics = isWinrm ? parseWinrm(out) : parse(out);
   if (!metrics) {
     console.error(`[metrics] ${serverId} parse-error raw=${JSON.stringify(out)}`);
     return { serverId, status: 'parse-error', raw: out };
@@ -175,11 +263,11 @@ router.get('/', async (req, res) => {
   const force = req.query.force === '1';
   const now   = Date.now();
 
-  const SSH_SERVERS = await getSSHServers();
-  const ids = Object.keys(SSH_SERVERS);
+  const MONITORED = await getMonitoredServers();
+  const ids = Object.keys(MONITORED);
 
   const results = await Promise.allSettled(
-    ids.map((id) => fetchWithHistory(id, SSH_SERVERS[id], force, now))
+    ids.map((id) => fetchWithHistory(id, MONITORED[id], force, now))
   );
 
   res.json({
@@ -194,10 +282,10 @@ router.get('/:id', async (req, res) => {
   const force = req.query.force === '1';
   const now   = Date.now();
 
-  const SSH_SERVERS = await getSSHServers();
-  if (!SSH_SERVERS[id]) return res.status(404).json({ error: `Servidor desconocido: ${id}` });
+  const MONITORED = await getMonitoredServers();
+  if (!MONITORED[id]) return res.status(404).json({ error: `Servidor desconocido: ${id}` });
 
-  res.json(await fetchWithHistory(id, SSH_SERVERS[id], force, now));
+  res.json(await fetchWithHistory(id, MONITORED[id], force, now));
 });
 
 export default router;
