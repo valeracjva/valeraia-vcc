@@ -35,12 +35,15 @@ const CACHE_TTL_MS = 60_000;
 const HISTORY_MAX  = 20; // ~20 min de trend a intervalo de refresco de 60s
 const cache = {}; // { serverId: { ts, data, history: [{ts,cpu,ram,disk}] } }
 
-// Comando: CPU% (snapshot /proc/stat), RAM%, RAM total MB, Disk%, Disk total GB, cores, load avg 1m
+// 3 lineas fijas (CPU%, RAM% + total MB, cores + load avg 1m) + N lineas variables al final,
+// una por filesystem real montado (excluye pseudo-filesystems: tmpfs, overlay de docker, proc, etc)
+// -- antes solo se reportaba "/", perdiendo discos/particiones adicionales (ej. /data en srv-faty001).
+const PSEUDO_FS_TYPES = 'tmpfs|devtmpfs|overlay|squashfs|proc|sysfs|cgroup|cgroup2|tracefs|debugfs|mqueue|pstore|rpc_pipefs|binfmt_misc|efivarfs|autofs';
 const CMD = [
   "awk '/^cpu /{idle=$5;tot=0;for(i=2;i<=NF;i++)tot+=$i;printf \"%.0f\\n\",100*(tot-idle)/tot}' /proc/stat",
   "free -m | awk '/Mem:/{printf \"%.0f %d\\n\",$3*100/$2,$2}'",
-  "df / | awk 'NR==2{sub(/%/,\"\",$5);printf \"%s %d\\n\",$5,int($2/1024/1024)}'",
   "echo \"$(nproc) $(awk '{print $1}' /proc/loadavg)\"",
+  `df -PT -B1G 2>/dev/null | tail -n +2 | awk '$2!~/^(${PSEUDO_FS_TYPES})$/{gsub(/%/,"",$6);print $7,$6,$3}'`,
 ].join(' && ');
 
 function timeoutMsForHost(host) {
@@ -134,7 +137,7 @@ $r = Invoke-Command -ComputerName $env:VCC_WINRM_HOST -Credential $cred -ScriptB
   # tener varios (C: sistema, D/F/G: storage de VMs, E: CSV compartido del cluster).
   $discos = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Sort-Object DeviceID | ForEach-Object {
     [PSCustomObject]@{
-      letra    = $_.DeviceID.TrimEnd(':')
+      label    = $_.DeviceID
       pct      = [math]::Round((($_.Size - $_.FreeSpace) / $_.Size) * 100, 0)
       totalGB  = [math]::Round($_.Size / 1GB, 0)
     }
@@ -199,12 +202,12 @@ function parseWinrm(out) {
     // compatibilidad con el shape que usan history/sparkline/cache, pensado para un solo filesystem
     // como en Linux. El resto de discos fijos (D/E/F/G en un host Hyper-V) va en "disks" completo,
     // que el frontend renderiza como filas adicionales sin sparkline.
-    const principal = discos.find(x => x.letra === 'C') ?? discos[0];
+    const principal = discos.find(x => x.label === 'C:') ?? discos[0];
     return {
       cpu:  { pct: d.cpuPct, cores: d.cores, load1: null },
       ram:  { pct: d.ramPct, totalMB: d.ramTotalMB },
       disk: { pct: principal.pct, totalGB: principal.totalGB },
-      disks: discos.map(x => ({ letra: x.letra, pct: x.pct, totalGB: x.totalGB })),
+      disks: discos.map(x => ({ label: x.label, pct: x.pct, totalGB: x.totalGB })),
     };
   } catch {
     return null;
@@ -215,17 +218,27 @@ function parse(out) {
   const lines = out.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length < 4) return null;
 
-  const cpu   = parseInt(lines[0], 10);
+  const cpu = parseInt(lines[0], 10);
   const [ramPct, ramMB] = lines[1].split(' ').map(Number);
-  const [diskPct, diskGB] = lines[2].split(' ').map(Number);
-  const [cores, load1] = lines[3].split(' ').map(Number);
+  const [cores, load1] = lines[2].split(' ').map(Number);
+  if ([cpu, ramPct, ramMB, cores, load1].some(isNaN)) return null;
 
-  if ([cpu, ramPct, ramMB, diskPct, diskGB, cores, load1].some(isNaN)) return null;
+  const disks = lines.slice(3).map(line => {
+    const parts = line.split(' ');
+    const label = parts.slice(0, parts.length - 2).join(' '); // el mount point puede tener espacios
+    const pct = Number(parts[parts.length - 2]);
+    const totalGB = Number(parts[parts.length - 1]);
+    return { label, pct, totalGB };
+  }).filter(d => d.label && !isNaN(d.pct) && !isNaN(d.totalGB));
+  if (disks.length === 0) return null;
+
+  const principal = disks.find(d => d.label === '/') ?? disks[0];
 
   return {
-    cpu:    { pct: cpu, cores, load1 },
-    ram:    { pct: ramPct,  totalMB: ramMB },
-    disk:   { pct: diskPct, totalGB: diskGB },
+    cpu:  { pct: cpu, cores, load1 },
+    ram:  { pct: ramPct, totalMB: ramMB },
+    disk: { pct: principal.pct, totalGB: principal.totalGB },
+    disks,
   };
 }
 

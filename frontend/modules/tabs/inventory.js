@@ -649,7 +649,7 @@ function applyMetrics(m) {
     // base.disks (solo Windows/WinRM) trae TODOS los discos fijos del host -- reemplaza el bloque
     // DSK unico por una fila por volumen (sin sparkline individual, no se lleva historial por disco).
     const diskRows = Array.isArray(base.disks) && base.disks.length > 0
-      ? base.disks.map(d => metricBar(`${d.letra}:`, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [])).join('')
+      ? base.disks.map(d => metricBar(d.label, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [])).join('')
       : metricBar('DSK', base.disk.pct, diskAbs, diskHist);
 
     metricsHtml =
