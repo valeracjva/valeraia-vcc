@@ -1946,6 +1946,32 @@ button { font-family: var(--font-ui); }
 
 .metric-row:hover .metric-spark { opacity: 1; }
 
+.metric-disk-hide {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.metric-row:hover .metric-disk-hide { opacity: 1; }
+.metric-disk-hide:hover { color: var(--danger); }
+
+.metric-disks-hidden {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-faint);
+  padding: 2px 0 0 0;
+}
+.metric-disks-restore {
+  color: var(--accent, var(--green));
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .metric-unreachable {
   font-family: var(--font-mono);
   font-size: 0.65rem;

@@ -12,6 +12,7 @@ const RISK_LABELS = {
   bajo: 'BAJO', moderado: 'MOD', alto: 'ALTO', critico: 'CRIT',
 };
 const HIDDEN_SERVERS_KEY = 'vcc-hidden-servers';
+const HIDDEN_DISKS_KEY   = 'vcc-hidden-disks'; // { [serverId]: string[] de labels ocultos }
 let infraGroupBy         = 'empresa';
 let infraFilterMonitored = true;
 let infraAllServers      = [];
@@ -24,6 +25,24 @@ function getHidden() {
 }
 function saveHidden(set) {
   localStorage.setItem(HIDDEN_SERVERS_KEY, JSON.stringify([...set]));
+}
+
+function getHiddenDisks() {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_DISKS_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveHiddenDisks(map) {
+  localStorage.setItem(HIDDEN_DISKS_KEY, JSON.stringify(map));
+}
+function hideDisk(serverId, label) {
+  const map = getHiddenDisks();
+  map[serverId] = [...new Set([...(map[serverId] || []), label])];
+  saveHiddenDisks(map);
+}
+function unhideAllDisks(serverId) {
+  const map = getHiddenDisks();
+  delete map[serverId];
+  saveHiddenDisks(map);
 }
 
 function buildServerCard(srv) {
@@ -563,6 +582,27 @@ export function initInventory({ confirmDialog } = {}) {
     renderInventory(infraAllServers);
   });
 
+  // Ocultar/restaurar discos individuales -- delegado a nivel documento (una sola vez) porque
+  // metricsHtml se reemplaza entero via innerHTML en cada refresh de metricas (card y listado).
+  document.addEventListener('click', (e) => {
+    const hideBtn = e.target.closest('.metric-disk-hide');
+    if (hideBtn) {
+      hideDisk(hideBtn.dataset.server, hideBtn.dataset.label);
+      const cached = infraMetricsCache[hideBtn.dataset.server];
+      if (cached) applyMetrics(cached);
+      return;
+    }
+    const restoreBtn = e.target.closest('.metric-disks-restore');
+    if (restoreBtn) {
+      const serverId = restoreBtn.closest('.metric-disks-hidden')?.dataset.server;
+      if (serverId) {
+        unhideAllDisks(serverId);
+        const cached = infraMetricsCache[serverId];
+        if (cached) applyMetrics(cached);
+      }
+    }
+  });
+
   // Gestionar — swap igual que SSL y Proyectos
   document.getElementById('btn-infra-manage')?.addEventListener('click', () => {
     const mc   = document.getElementById('infra-manage-container');
@@ -607,10 +647,15 @@ function sparklineSvg(values, color) {
   );
 }
 
-function metricBar(label, pct, absText, sparkValues) {
+function metricBar(label, pct, absText, sparkValues, hideCtx) {
   const clamped = Math.min(100, Math.max(0, pct));
   const level = clamped >= 85 ? 'crit' : clamped >= 70 ? 'warn' : 'ok';
   const color = level === 'crit' ? 'var(--red)' : level === 'warn' ? 'var(--amber)' : 'var(--green)';
+  // hideCtx = { serverId, label } -- solo se pasa en filas de disco, agrega el x para destildar
+  // ese volumen puntual (localStorage, no toca servers-config.json, mismo patron que ocultar server).
+  const hideBtn = hideCtx
+    ? `<button class="metric-disk-hide" title="Ocultar este disco" data-server="${escHtml(hideCtx.serverId)}" data-label="${escHtml(hideCtx.label)}">×</button>`
+    : '';
   return (
     `<div class="metric-row metric-${level}" title="${escHtml(label)}: ${escHtml(absText ?? '')}">` +
       `<span class="metric-label">${label}</span>` +
@@ -620,6 +665,7 @@ function metricBar(label, pct, absText, sparkValues) {
       `<span class="metric-value" style="color:${color}">${clamped}%</span>` +
       `<span class="metric-abs">${escHtml(absText ?? '')}</span>` +
       sparklineSvg(sparkValues, color) +
+      hideBtn +
     `</div>`
   );
 }
@@ -646,11 +692,22 @@ function applyMetrics(m) {
     const ramAbs  = `${fmtGB(base.ram.totalMB * base.ram.pct / 100)}/${fmtGB(base.ram.totalMB)} GB`;
     const diskAbs = `${Math.round(base.disk.totalGB * base.disk.pct / 100)}/${base.disk.totalGB} GB`;
 
-    // base.disks (solo Windows/WinRM) trae TODOS los discos fijos del host -- reemplaza el bloque
-    // DSK unico por una fila por volumen (sin sparkline individual, no se lleva historial por disco).
-    const diskRows = Array.isArray(base.disks) && base.disks.length > 0
-      ? base.disks.map(d => metricBar(d.label, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [])).join('')
-      : metricBar('DSK', base.disk.pct, diskAbs, diskHist);
+    // base.disks trae TODOS los discos/filesystems reales del host -- reemplaza el bloque DSK
+    // unico por una fila por volumen (sin sparkline individual, no se lleva historial por disco).
+    // Los ocultados a mano (x en la fila) se filtran via localStorage, no tocan servers-config.json.
+    const hiddenDisks = getHiddenDisks()[m.serverId] || [];
+    let diskRows;
+    if (Array.isArray(base.disks) && base.disks.length > 0) {
+      const visibles = base.disks.filter(d => !hiddenDisks.includes(d.label));
+      diskRows = visibles
+        .map(d => metricBar(d.label, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [], { serverId: m.serverId, label: d.label }))
+        .join('');
+      if (hiddenDisks.length > 0) {
+        diskRows += `<div class="metric-disks-hidden" data-server="${escHtml(m.serverId)}">${hiddenDisks.length} disco(s) oculto(s) · <span class="metric-disks-restore">restaurar</span></div>`;
+      }
+    } else {
+      diskRows = metricBar('DSK', base.disk.pct, diskAbs, diskHist);
+    }
 
     metricsHtml =
       metricBar('CPU', base.cpu.pct,  cpuAbs,  cpuHist) +
