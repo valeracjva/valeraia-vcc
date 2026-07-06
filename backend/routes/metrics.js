@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { homedir } from 'os';
 import path from 'path';
-import { createHash, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 import { Client } from 'ssh2';
 import { PATHS } from '../config.js';
 
@@ -37,10 +37,16 @@ const CMD = [
   "echo \"$(nproc) $(awk '{print $1}' /proc/loadavg)\"",
 ].join(' && ');
 
+function timeoutMsForHost(host) {
+  if (/^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return 3000;
+  return 8000;
+}
+
 function sshExec(conf, cmd) {
   return new Promise((resolve) => {
     const conn = new Client();
     let settled = false;
+    const timeoutMs = timeoutMsForHost(conf.host);
 
     const done = (result) => {
       if (settled) return;
@@ -50,7 +56,7 @@ function sshExec(conf, cmd) {
       resolve(result);
     };
 
-    const timer = setTimeout(() => done({ error: 'timeout' }), 7000);
+    const timer = setTimeout(() => done({ error: 'timeout' }), timeoutMs);
 
     conn.on('ready', () => {
       conn.exec(cmd, (err, stream) => {
@@ -70,7 +76,7 @@ function sshExec(conf, cmd) {
         port:         conf.port ?? 22,
         username:     conf.user,
         privateKey:   readFileSync(conf.key),
-        readyTimeout: 6000,
+        readyTimeout: timeoutMs + 1000,
         algorithms: {
           serverHostKey: ['ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'rsa-sha2-256', 'rsa-sha2-512', 'ssh-rsa'],
         },
@@ -163,9 +169,15 @@ router.get('/', async (req, res) => {
 
   const SSH_SERVERS = await getSSHServers();
   const ids = Object.keys(SSH_SERVERS);
-  const results = await Promise.all(ids.map((id) => fetchWithHistory(id, SSH_SERVERS[id], force, now)));
 
-  res.json({ metrics: results, checkedAt: new Date().toISOString() });
+  const results = await Promise.allSettled(
+    ids.map((id) => fetchWithHistory(id, SSH_SERVERS[id], force, now))
+  );
+
+  res.json({
+    metrics: results.map(r => r.status === 'fulfilled' ? r.value : { serverId: 'unknown', status: 'unreachable', error: r.reason?.message ?? 'unknown error' }),
+    checkedAt: new Date().toISOString(),
+  });
 });
 
 // GET /api/metrics/:id — un servidor

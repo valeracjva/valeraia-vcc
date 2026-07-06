@@ -1949,6 +1949,13 @@ button { font-family: var(--font-ui); }
   animation: metric-pulse 1.4s ease-in-out infinite;
 }
 
+.metric-stale {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--warning);
+  padding-top: 4px;
+}
+
 @keyframes metric-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.35; }

@@ -56,6 +56,7 @@ app.use('/api/projects',  projectsRouter);
 app.use('/api/ssl',       sslRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/metrics',   metricsRouter);
+app.use('/api/infra-health', metricsRouter);
 app.use('/api/runtime',   runtimeRouter);
 app.use('/api/tunnel-db', tunnelDbRouter);
 app.use('/api/opsmap',    opsmapRouter);
