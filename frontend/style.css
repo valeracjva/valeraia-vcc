@@ -1888,6 +1888,9 @@ button { font-family: var(--font-ui); }
   color: var(--text-faint);
   width: 2.1rem;
   flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metric-bar-track {
@@ -2073,7 +2076,11 @@ button { font-family: var(--font-ui); }
 .infra-hide-btn:hover { color: var(--danger); }
 
 .infra-edit-modal { align-items: flex-start; padding-top: 5vh; }
-.infra-edit-modal-box { width: min(680px, 94vw); max-height: 88vh; overflow-y: auto; }
+/* .modal-box.infra-edit-modal-box (2 clases) para ganarle en especificidad a .modal-box genérico
+   (420px) -- con la misma especificidad (una clase c/u) gana el que aparece despues en el archivo. */
+.modal-box.infra-edit-modal-box { width: min(920px, 96vw); max-height: 88vh; overflow-y: auto; }
+/* Modal mas ancho -> permite 3-4 columnas reales en vez de 1-2 con el mismo minmax(220px) global */
+.infra-edit-modal-box .manage-form-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 
 /* Notas inline */
 .infra-notas {

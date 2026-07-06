@@ -426,8 +426,11 @@ function showInventoryModal(srv) {
   box.className = 'modal-box infra-edit-modal-box';
   overlay.appendChild(box);
   document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  // A pedido: NO cerrar al clickear afuera -- solo Escape o los botones Cancelar/Guardar
+  // (formulario largo, un click afuera accidental no debe perder lo tipeado).
+  const onKeydown = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { document.removeEventListener('keydown', onKeydown); overlay.remove(); };
+  document.addEventListener('keydown', onKeydown);
   showInventoryForm(srv, box, close);
 }
 
