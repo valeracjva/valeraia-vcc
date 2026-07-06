@@ -646,10 +646,16 @@ function applyMetrics(m) {
     const ramAbs  = `${fmtGB(base.ram.totalMB * base.ram.pct / 100)}/${fmtGB(base.ram.totalMB)} GB`;
     const diskAbs = `${Math.round(base.disk.totalGB * base.disk.pct / 100)}/${base.disk.totalGB} GB`;
 
+    // base.disks (solo Windows/WinRM) trae TODOS los discos fijos del host -- reemplaza el bloque
+    // DSK unico por una fila por volumen (sin sparkline individual, no se lleva historial por disco).
+    const diskRows = Array.isArray(base.disks) && base.disks.length > 0
+      ? base.disks.map(d => metricBar(`${d.letra}:`, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [])).join('')
+      : metricBar('DSK', base.disk.pct, diskAbs, diskHist);
+
     metricsHtml =
       metricBar('CPU', base.cpu.pct,  cpuAbs,  cpuHist) +
       metricBar('RAM', base.ram.pct,  ramAbs,  ramHist) +
-      metricBar('DSK', base.disk.pct, diskAbs, diskHist);
+      diskRows;
 
     if (m.status === 'stale') {
       metricsHtml += `<div class="metric-stale">última métrica válida · ${escHtml(m.error || 'sin actualización')}</div>`;

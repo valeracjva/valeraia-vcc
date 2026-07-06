@@ -130,17 +130,24 @@ $r = Invoke-Command -ComputerName $env:VCC_WINRM_HOST -Credential $cred -ScriptB
   $os = Get-CimInstance Win32_OperatingSystem
   $cpuLoad = (Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average
   $cores = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
-  $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+  # DriveType=3 = discos fijos locales -- excluye CD-ROM/removibles/red. Hosts Hyper-V suelen
+  # tener varios (C: sistema, D/F/G: storage de VMs, E: CSV compartido del cluster).
+  $discos = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Sort-Object DeviceID | ForEach-Object {
+    [PSCustomObject]@{
+      letra    = $_.DeviceID.TrimEnd(':')
+      pct      = [math]::Round((($_.Size - $_.FreeSpace) / $_.Size) * 100, 0)
+      totalGB  = [math]::Round($_.Size / 1GB, 0)
+    }
+  }
   [PSCustomObject]@{
     cpuPct      = [math]::Round($cpuLoad, 0)
     cores       = $cores
     ramPct      = [math]::Round((($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / $os.TotalVisibleMemorySize) * 100, 0)
     ramTotalMB  = [math]::Round($os.TotalVisibleMemorySize / 1024, 0)
-    diskPct     = [math]::Round((($disk.Size - $disk.FreeSpace) / $disk.Size) * 100, 0)
-    diskTotalGB = [math]::Round($disk.Size / 1GB, 0)
+    discos      = @($discos)
   }
 }
-$r | ConvertTo-Json -Compress
+$r | ConvertTo-Json -Compress -Depth 4
 `.trim();
 
 function winrmExec(conf) {
@@ -184,12 +191,20 @@ function winrmExec(conf) {
 function parseWinrm(out) {
   try {
     const d = JSON.parse(out);
-    if ([d.cpuPct, d.cores, d.ramPct, d.ramTotalMB, d.diskPct, d.diskTotalGB].some(v => v === null || v === undefined || Number.isNaN(v)))
+    const discos = Array.isArray(d.discos) ? d.discos : (d.discos ? [d.discos] : []);
+    if ([d.cpuPct, d.cores, d.ramPct, d.ramTotalMB].some(v => v === null || v === undefined || Number.isNaN(v)))
       return null;
+    if (discos.length === 0) return null;
+    // El disco C: (o el primero por orden alfabetico) queda como "disk" principal -- mantiene
+    // compatibilidad con el shape que usan history/sparkline/cache, pensado para un solo filesystem
+    // como en Linux. El resto de discos fijos (D/E/F/G en un host Hyper-V) va en "disks" completo,
+    // que el frontend renderiza como filas adicionales sin sparkline.
+    const principal = discos.find(x => x.letra === 'C') ?? discos[0];
     return {
       cpu:  { pct: d.cpuPct, cores: d.cores, load1: null },
       ram:  { pct: d.ramPct, totalMB: d.ramTotalMB },
-      disk: { pct: d.diskPct, totalGB: d.diskTotalGB },
+      disk: { pct: principal.pct, totalGB: principal.totalGB },
+      disks: discos.map(x => ({ letra: x.letra, pct: x.pct, totalGB: x.totalGB })),
     };
   } catch {
     return null;
