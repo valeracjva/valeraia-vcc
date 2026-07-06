@@ -1,7 +1,7 @@
 import { API_BASE, FRESHNESS_STATES, POLL_MS } from './modules/core/constants.js';
 import { get, apiFetch } from './modules/core/api.js';
 import { buildAccordion, escHtml, formField, formSelect, showManageBanner } from './modules/core/dom.js';
-import { initSidebar, initTabs, initTheme, tickFooterClock } from './modules/core/shell.js';
+import { initSidebar, initTabs, initTheme, tickFooterClock, confirmDialog, openJsonModal, initJsonModal } from './modules/core/shell.js';
 import { renderBriefing } from './modules/tabs/briefing.js';
 import { renderCockpit } from './modules/tabs/cockpit.js';
 import { initGovern, connectGovernWS } from './modules/tabs/govern.js';
@@ -83,39 +83,6 @@ function showError(visible) {
   document.getElementById('error-banner').classList.toggle('hidden', !visible);
 }
 
-function confirmDialog(title, body, danger = false, expectedText = null) {
-  return new Promise((resolve) => {
-    document.getElementById('confirm-title').textContent = title;
-    document.getElementById('confirm-body').textContent  = body;
-    const ok     = document.getElementById('confirm-ok');
-    const cancel = document.getElementById('confirm-cancel');
-    const input  = document.getElementById('confirm-input');
-    ok.className = danger ? 'btn btn-danger btn-modal-ok' : 'btn btn-primary btn-modal-ok';
-    input.classList.toggle('hidden', !expectedText);
-    input.value = '';
-    input.placeholder = expectedText ? `Escribí ${expectedText}` : '';
-    ok.disabled = !!expectedText;
-    document.getElementById('confirm-modal').classList.remove('hidden');
-    if (expectedText) input.focus();
-
-    function cleanup(result) {
-      document.getElementById('confirm-modal').classList.add('hidden');
-      ok.removeEventListener('click', onOk);
-      cancel.removeEventListener('click', onCancel);
-      input.removeEventListener('input', onInput);
-      input.classList.add('hidden');
-      ok.disabled = false;
-      resolve(result);
-    }
-    const onOk     = () => cleanup(true);
-    const onCancel = () => cleanup(false);
-    const onInput  = () => { ok.disabled = input.value !== expectedText; };
-    ok.addEventListener('click', onOk);
-    cancel.addEventListener('click', onCancel);
-    input.addEventListener('input', onInput);
-  });
-}
-
 // === Update principal (polling 30s) ===
 function activeTab() {
   const active = document.querySelector('.tab-btn.active');
@@ -170,57 +137,6 @@ async function update() {
     showError(true);
   }
 }
-
-// === JSON Editor Modal ===
-function openJsonModal({ title, value, onSave }) {
-  const modal    = document.getElementById('json-modal');
-  const textarea = document.getElementById('json-modal-textarea');
-  const errEl    = document.getElementById('json-modal-error');
-  const saveBtn  = document.getElementById('json-modal-save');
-
-  document.getElementById('json-modal-title').textContent = title;
-  textarea.value = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-  errEl.textContent = '';
-  errEl.classList.add('hidden');
-  modal.classList.remove('hidden');
-  textarea.focus();
-
-  const close = () => modal.classList.add('hidden');
-
-  const save = async () => {
-    let parsed;
-    try {
-      parsed = JSON.parse(textarea.value);
-    } catch (e) {
-      errEl.textContent = 'JSON inválido: ' + e.message;
-      errEl.classList.remove('hidden');
-      return;
-    }
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Guardando…';
-    try {
-      await onSave(parsed);
-      close();
-    } catch (e) {
-      errEl.textContent = 'Error al guardar: ' + (e.message ?? 'desconocido');
-      errEl.classList.remove('hidden');
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Guardar';
-    }
-  };
-
-  document.getElementById('json-modal-save').onclick   = save;
-  document.getElementById('json-modal-cancel').onclick = close;
-  document.getElementById('json-modal-close').onclick  = close;
-}
-
-function initJsonModal() {
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.getElementById('json-modal').classList.add('hidden');
-  });
-}
-
 
 // === Init ===
 async function init() {
