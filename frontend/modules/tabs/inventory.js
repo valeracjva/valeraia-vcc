@@ -674,26 +674,38 @@ function metricBar(label, pct, absText, sparkValues, hideCtx) {
   );
 }
 
-// Actualiza el resumen "N disco(s) oculto(s) · restaurar" dentro del acordeon existente
-// (mismo panel colapsable de apps/dominios/notas) en vez de mostrarlo fijo entre las filas
-// de metricas. Revela el toggle si estaba vacio (server sin apps/dominios/notas) y count > 0.
-function updateDiskHiddenSummary(serverId, count) {
+// El desglose completo por disco vive dentro del acordeon (apps/dominios/notas), no en la vista
+// principal de la card -- ahi solo se muestra una fila agregada (peor caso). Evita que 5 barras
+// casi identicas sean el primer impacto visual de la card; el detalle sigue a un click de distancia.
+function updateDiskDetails(serverId, allDisks, hiddenLabels) {
   const card = document.querySelector(`.infra-card[data-server="${CSS.escape(serverId)}"]`);
   if (!card) return;
   const disksEl = card.querySelector('.infra-detail-disks');
+  const showBreakdown = Array.isArray(allDisks) && allDisks.length > 1;
+
   if (disksEl) {
-    disksEl.innerHTML = count > 0
-      ? `<div class="infra-detail-section"><span class="infra-detail-label">Discos ocultos</span>` +
-          `<div class="infra-detail-item">${count} disco(s) oculto(s) · <span class="metric-disks-restore" data-server="${escHtml(serverId)}">restaurar</span></div>` +
-        `</div>`
-      : '';
+    if (showBreakdown) {
+      const rows = allDisks
+        .filter(d => !hiddenLabels.includes(d.label))
+        .map(d => metricBar(d.label, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [], { serverId, label: d.label }))
+        .join('');
+      const restoreLine = hiddenLabels.length > 0
+        ? `<div class="infra-detail-item">${hiddenLabels.length} disco(s) oculto(s) · <span class="metric-disks-restore" data-server="${escHtml(serverId)}">restaurar</span></div>`
+        : '';
+      disksEl.innerHTML = `<div class="infra-detail-section"><span class="infra-detail-label">Discos (${allDisks.length})</span>${rows}${restoreLine}</div>`;
+    } else {
+      disksEl.innerHTML = '';
+    }
   }
 
   const toggle = card.querySelector('.infra-toggle');
   if (!toggle) return;
   const srv = infraAllServers.find(s => s.id === serverId);
   const baseParts = srv ? buildToggleLabel(srv) : '';
-  const parts = [baseParts, count > 0 ? `${count} disco(s) oculto(s)` : ''].filter(Boolean);
+  const diskPart = showBreakdown
+    ? `${allDisks.length} discos${hiddenLabels.length > 0 ? ` (${hiddenLabels.length} oculto/s)` : ''}`
+    : '';
+  const parts = [baseParts, diskPart].filter(Boolean);
   const labelEl = toggle.querySelector('.infra-toggle-label');
   if (labelEl) labelEl.textContent = parts.join(' · ');
   toggle.classList.toggle('infra-toggle-empty', parts.length === 0);
@@ -721,22 +733,34 @@ function applyMetrics(m) {
     const ramAbs  = `${fmtGB(base.ram.totalMB * base.ram.pct / 100)}/${fmtGB(base.ram.totalMB)} GB`;
     const diskAbs = `${Math.round(base.disk.totalGB * base.disk.pct / 100)}/${base.disk.totalGB} GB`;
 
-    // base.disks trae TODOS los discos/filesystems reales del host -- reemplaza el bloque DSK
-    // unico por una fila por volumen (sin sparkline individual, no se lleva historial por disco).
-    // Los ocultados a mano (x en la fila) se filtran via localStorage, no tocan servers-config.json.
-    // El resumen "N oculto(s)" NO va inline entre las filas -- se muestra dentro del acordeon
-    // existente (apps/dominios/notas) via updateDiskHiddenSummary(), para no ensuciar la card.
+    // base.disks trae TODOS los discos/filesystems reales del host. Con varios discos, mostrar
+    // uno por fila en la vista principal es ruido (5 barras casi identicas) -- se muestra una
+    // sola fila agregada (peor caso, el mas relevante para alertar) y el desglose completo por
+    // volumen queda dentro del acordeon existente via updateDiskDetails().
     const hiddenDisks = getHiddenDisks()[m.serverId] || [];
     let diskRows;
     if (Array.isArray(base.disks) && base.disks.length > 0) {
       const visibles = base.disks.filter(d => !hiddenDisks.includes(d.label));
-      diskRows = visibles
-        .map(d => metricBar(d.label, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [], { serverId: m.serverId, label: d.label }))
-        .join('');
+      if (visibles.length > 1) {
+        const worst = visibles.reduce((a, b) => (b.pct > a.pct ? b : a));
+        // Label fijo "DSK" (mismo ancho que CPU/RAM) -- "Disco (N)" se truncaba a "Disc…" con
+        // el ancho fijo de .metric-label. El conteo y el peor disco ya quedan en abs/toggle.
+        diskRows = metricBar(
+          'DSK', worst.pct,
+          `${worst.label} ${Math.round(worst.totalGB * worst.pct / 100)}/${worst.totalGB} GB`,
+          diskHist
+        );
+      } else if (visibles.length === 1) {
+        const only = visibles[0];
+        diskRows = metricBar(only.label, only.pct, `${Math.round(only.totalGB * only.pct / 100)}/${only.totalGB} GB`, diskHist);
+      } else {
+        diskRows = `<div class="metric-unreachable">todos los discos ocultos</div>`;
+      }
+      updateDiskDetails(m.serverId, base.disks, hiddenDisks);
     } else {
       diskRows = metricBar('DSK', base.disk.pct, diskAbs, diskHist);
+      updateDiskDetails(m.serverId, null, []);
     }
-    updateDiskHiddenSummary(m.serverId, hiddenDisks.length);
 
     metricsHtml =
       metricBar('CPU', base.cpu.pct,  cpuAbs,  cpuHist) +
