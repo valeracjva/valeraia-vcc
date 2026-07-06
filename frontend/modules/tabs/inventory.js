@@ -72,26 +72,27 @@ function buildServerCard(srv) {
     (srv.winrmUser ? `<div class="infra-ssh">WinRM: ${escHtml(srv.winrmUser)}</div>` : '') +
     (srv.puerto    ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
     (srv.monitoreado ? `<div class="infra-metrics"><div class="metric-loading">actualizando…</div></div>` : '') +
-    (hasDetails  ?
-      `<div class="infra-toggle" data-open="false">` +
-        `<span class="infra-arrow">▶</span>` +
-        `<span class="infra-toggle-label">${buildToggleLabel(srv)}</span>` +
-      `</div>` +
-      `<div class="infra-details hidden">` +
-        buildDetails(srv) +
-      `</div>`
-    : '');
+    // El toggle/details SIEMPRE se crea (aunque no haya apps/dominios/notas todavia) porque
+    // "discos ocultos" se agrega de forma dinamica despues del primer fetch de metricas -- se
+    // oculta con .infra-toggle-empty si al momento no hay nada que mostrar, y applyMetrics lo
+    // revela cuando corresponda.
+    `<div class="infra-toggle${hasDetails ? '' : ' infra-toggle-empty'}" data-open="false">` +
+      `<span class="infra-arrow">▶</span>` +
+      `<span class="infra-toggle-label">${buildToggleLabel(srv)}</span>` +
+    `</div>` +
+    `<div class="infra-details hidden">` +
+      buildDetails(srv) +
+      `<div class="infra-detail-disks"></div>` +
+    `</div>`;
 
-  if (hasDetails) {
-    const toggle  = card.querySelector('.infra-toggle');
-    const details = card.querySelector('.infra-details');
-    toggle.addEventListener('click', () => {
-      const open = toggle.dataset.open === 'true';
-      toggle.dataset.open = String(!open);
-      toggle.querySelector('.infra-arrow').textContent = open ? '▶' : '▼';
-      details.classList.toggle('hidden', open);
-    });
-  }
+  const toggle  = card.querySelector('.infra-toggle');
+  const details = card.querySelector('.infra-details');
+  toggle.addEventListener('click', () => {
+    const open = toggle.dataset.open === 'true';
+    toggle.dataset.open = String(!open);
+    toggle.querySelector('.infra-arrow').textContent = open ? '▶' : '▼';
+    details.classList.toggle('hidden', open);
+  });
 
   card.querySelector('.infra-edit-btn').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -597,7 +598,7 @@ export function initInventory({ confirmDialog } = {}) {
     }
     const restoreBtn = e.target.closest('.metric-disks-restore');
     if (restoreBtn) {
-      const serverId = restoreBtn.closest('.metric-disks-hidden')?.dataset.server;
+      const serverId = restoreBtn.dataset.server;
       if (serverId) {
         unhideAllDisks(serverId);
         const cached = infraMetricsCache[serverId];
@@ -673,6 +674,31 @@ function metricBar(label, pct, absText, sparkValues, hideCtx) {
   );
 }
 
+// Actualiza el resumen "N disco(s) oculto(s) · restaurar" dentro del acordeon existente
+// (mismo panel colapsable de apps/dominios/notas) en vez de mostrarlo fijo entre las filas
+// de metricas. Revela el toggle si estaba vacio (server sin apps/dominios/notas) y count > 0.
+function updateDiskHiddenSummary(serverId, count) {
+  const card = document.querySelector(`.infra-card[data-server="${CSS.escape(serverId)}"]`);
+  if (!card) return;
+  const disksEl = card.querySelector('.infra-detail-disks');
+  if (disksEl) {
+    disksEl.innerHTML = count > 0
+      ? `<div class="infra-detail-section"><span class="infra-detail-label">Discos ocultos</span>` +
+          `<div class="infra-detail-item">${count} disco(s) oculto(s) · <span class="metric-disks-restore" data-server="${escHtml(serverId)}">restaurar</span></div>` +
+        `</div>`
+      : '';
+  }
+
+  const toggle = card.querySelector('.infra-toggle');
+  if (!toggle) return;
+  const srv = infraAllServers.find(s => s.id === serverId);
+  const baseParts = srv ? buildToggleLabel(srv) : '';
+  const parts = [baseParts, count > 0 ? `${count} disco(s) oculto(s)` : ''].filter(Boolean);
+  const labelEl = toggle.querySelector('.infra-toggle-label');
+  if (labelEl) labelEl.textContent = parts.join(' · ');
+  toggle.classList.toggle('infra-toggle-empty', parts.length === 0);
+}
+
 function applyMetrics(m) {
   infraMetricsCache[m.serverId] = m;
 
@@ -698,6 +724,8 @@ function applyMetrics(m) {
     // base.disks trae TODOS los discos/filesystems reales del host -- reemplaza el bloque DSK
     // unico por una fila por volumen (sin sparkline individual, no se lleva historial por disco).
     // Los ocultados a mano (x en la fila) se filtran via localStorage, no tocan servers-config.json.
+    // El resumen "N oculto(s)" NO va inline entre las filas -- se muestra dentro del acordeon
+    // existente (apps/dominios/notas) via updateDiskHiddenSummary(), para no ensuciar la card.
     const hiddenDisks = getHiddenDisks()[m.serverId] || [];
     let diskRows;
     if (Array.isArray(base.disks) && base.disks.length > 0) {
@@ -705,12 +733,10 @@ function applyMetrics(m) {
       diskRows = visibles
         .map(d => metricBar(d.label, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [], { serverId: m.serverId, label: d.label }))
         .join('');
-      if (hiddenDisks.length > 0) {
-        diskRows += `<div class="metric-disks-hidden" data-server="${escHtml(m.serverId)}">${hiddenDisks.length} disco(s) oculto(s) · <span class="metric-disks-restore">restaurar</span></div>`;
-      }
     } else {
       diskRows = metricBar('DSK', base.disk.pct, diskAbs, diskHist);
     }
+    updateDiskHiddenSummary(m.serverId, hiddenDisks.length);
 
     metricsHtml =
       metricBar('CPU', base.cpu.pct,  cpuAbs,  cpuHist) +

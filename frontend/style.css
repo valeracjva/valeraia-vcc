@@ -1833,6 +1833,7 @@ button { font-family: var(--font-ui); }
 }
 
 .infra-toggle:hover { color: var(--text-muted); }
+.infra-toggle.infra-toggle-empty { display: none; }
 
 .infra-arrow { font-size: 0.58rem; }
 .infra-toggle-label { font-size: 0.68rem; }
