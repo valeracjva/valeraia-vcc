@@ -1,5 +1,5 @@
 import { get, apiFetch } from '../core/api.js';
-import { buildAccordion, escHtml, formField, formSelect, showManageBanner } from '../core/dom.js';
+import { buildAccordion, escHtml, formField, formPasswordField, formSelect, showManageBanner } from '../core/dom.js';
 
 // === M4 — Inventario Infra ===
 const RISK_COLORS = {
@@ -40,6 +40,7 @@ function buildServerCard(srv) {
       `<span class="infra-dot" style="background:${riskColor}"></span>` +
       `<span class="infra-id">${escHtml(srv.id)}</span>` +
       `<span class="infra-risk-badge" style="color:${riskColor};border-color:${riskColor}">${riskLabel}</span>` +
+      ((srv.perfil || []).map(p => `<span class="infra-perfil-badge">${escHtml(p)}</span>`).join('')) +
       (srv.monitoreado ? `<span class="infra-conn-dot pending" data-conn="${escHtml(srv.id)}" title="Esperando métricas…"></span>` : '') +
       `<button class="infra-edit-btn" title="Editar servidor" data-edit-id="${escHtml(srv.id)}">✎</button>` +
       `<button class="infra-hide-btn" title="Ocultar de la vista" data-hide-id="${escHtml(srv.id)}">×</button>` +
@@ -48,8 +49,9 @@ function buildServerCard(srv) {
     `<div class="infra-os">${escHtml(srv.os)}</div>` +
     `<div class="infra-empresa">${escHtml(srv.empresa)}</div>` +
     `<div class="infra-rol">${escHtml(srv.rol)}</div>` +
-    (srv.sshUser ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${escHtml(String(srv.mysqlTunel))}` : ''}</div>` : '') +
-    (srv.puerto  ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
+    (srv.sshUser   ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${escHtml(String(srv.mysqlTunel))}` : ''}</div>` : '') +
+    (srv.winrmUser ? `<div class="infra-ssh">WinRM: ${escHtml(srv.winrmUser)}</div>` : '') +
+    (srv.puerto    ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
     (srv.monitoreado ? `<div class="infra-metrics"><div class="metric-loading">actualizando…</div></div>` : '') +
     (hasDetails  ?
       `<div class="infra-toggle" data-open="false">` +
@@ -431,6 +433,9 @@ function showInventoryForm(srv, container, onClose) {
         formField('Acceso',    'infra-f-acceso',     srv?.acceso     || '', 'ej: VPN NRE') +
         formField('SSH usuario','infra-f-sshuser',   srv?.sshUser    || '', 'ej: ubuntu') +
         formField('SSH clave', 'infra-f-sshkey',     srv?.sshKey     || '', 'ej: .ssh/digna/srv.key') +
+        formField('Perfil (Windows, coma-separado)', 'infra-f-perfil', (srv?.perfil || []).join(','), 'ej: hyper-v,iis') +
+        formField('WinRM usuario', 'infra-f-winrmuser', srv?.winrmUser || '', 'ej: administrador') +
+        formPasswordField('WinRM contraseña', 'infra-f-winrmpass', isEdit && srv?.winrmPassword ? '' : '', isEdit ? '(sin cambios si se deja vacío)' : 'contraseña') +
         formField('MySQL túnel','infra-f-mysqltun',  srv?.mysqlTunel || '', 'ej: local 3308 → 3306') +
         formField('Puerto',    'infra-f-puerto',     srv?.puerto     || '', 'ej: 1433') +
       `</div>` +
@@ -483,6 +488,11 @@ function showInventoryForm(srv, container, onClose) {
       acceso:     document.getElementById('infra-f-acceso').value.trim(),
       sshUser:    document.getElementById('infra-f-sshuser').value.trim() || null,
       sshKey:     document.getElementById('infra-f-sshkey').value.trim()  || null,
+      perfil:     document.getElementById('infra-f-perfil').value.trim()
+                    .split(',').map(p => p.trim()).filter(Boolean),
+      winrmUser:  document.getElementById('infra-f-winrmuser').value.trim() || null,
+      // Vacío = "no cambiar" en edición (el backend conserva el valor existente); en alta, vacío = sin credencial.
+      winrmPassword: document.getElementById('infra-f-winrmpass').value.trim() || null,
       mysqlTunel: document.getElementById('infra-f-mysqltun').value.trim() || null,
       puerto:     document.getElementById('infra-f-puerto').value.trim()  || null,
       notas:      document.getElementById('infra-f-notas').value.trim()   || null,

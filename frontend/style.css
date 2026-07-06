@@ -1801,6 +1801,18 @@ button { font-family: var(--font-ui); }
   padding: 1px 6px;
 }
 
+.infra-perfil-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--text-faint);
+  color: var(--text-faint);
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin-left: 4px;
+}
+
 .infra-ip, .infra-os, .infra-empresa, .infra-rol, .infra-ssh {
   font-size: 0.72rem;
   color: var(--text-muted);

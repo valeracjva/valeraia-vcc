@@ -7,6 +7,7 @@ import os from 'os';
 const router = Router();
 
 const VALID_RIESGOS = ['bajo', 'moderado', 'alto', 'critico'];
+const VALID_PERFILES = ['hyper-v', 'iis', 'sql-server', 'ad-dc', 'generico-windows'];
 
 function validate(s) {
   if (!s || typeof s !== 'object')             return 'servidor inválido';
@@ -17,6 +18,11 @@ function validate(s) {
   if (!VALID_RIESGOS.includes(s.riesgo))       return `riesgo inválido (${VALID_RIESGOS.join('|')})`;
   if (!Array.isArray(s.apps))                  return 'apps debe ser array';
   if (!Array.isArray(s.dominios))              return 'dominios debe ser array';
+  if (s.perfil !== undefined && s.perfil !== null) {
+    if (!Array.isArray(s.perfil))              return 'perfil debe ser array';
+    const invalido = s.perfil.find(p => !VALID_PERFILES.includes(p));
+    if (invalido)                              return `perfil inválido: ${invalido} (${VALID_PERFILES.join('|')})`;
+  }
   return null;
 }
 
@@ -30,14 +36,26 @@ function clean(s) {
     rol:        (s.rol || '').trim(),
     riesgo:     s.riesgo,
     acceso:     (s.acceso || '').trim(),
-    sshUser:    s.sshUser?.trim() || null,
-    sshKey:     s.sshKey?.trim()  || null,
+    perfil:     Array.isArray(s.perfil) ? s.perfil.filter(p => VALID_PERFILES.includes(p)) : [],
+    sshUser:      s.sshUser?.trim() || null,
+    sshKey:       s.sshKey?.trim()  || null,
+    winrmUser:    s.winrmUser?.trim() || null,
+    // winrmPassword: credencial de login de Windows completo (no solo DB) -- se guarda en texto plano
+    // en servers-config.json (gitignored), mismo patrón que db.password en tunnels-config.json.
+    // Se enmascara en GET /api/inventory (ver maskPassword) para no dejarla circulando en el frontend
+    // salvo el instante de alta/edición donde el propio operador la acaba de tipear.
+    winrmPassword: s.winrmPassword?.trim() || null,
     mysqlTunel: s.mysqlTunel?.trim() || null,
     puerto:     s.puerto?.trim()  || null,
     notas:      s.notas?.trim()   || null,
     apps:       (s.apps || []).map(a => ({ name: String(a.name || '').trim(), desc: String(a.desc || '').trim() })).filter(a => a.name),
     dominios:   (s.dominios || []).map(d => String(d).trim()).filter(Boolean),
   };
+}
+
+function maskPassword(s) {
+  if (!s.winrmPassword) return s;
+  return { ...s, winrmPassword: s.winrmPassword.slice(0, 2) + '****' };
 }
 
 async function load() {
@@ -53,7 +71,7 @@ async function save(servers) {
 router.get('/', async (req, res, next) => {
   try {
     const servers = await load();
-    res.json({ servers, count: servers.length });
+    res.json({ servers: servers.map(maskPassword), count: servers.length });
   } catch (err) {
     next(err);
   }
@@ -109,8 +127,10 @@ router.put('/:id', async (req, res, next) => {
     const idx = servers.findIndex(s => s.id === id);
     if (idx === -1) return res.status(404).json({ error: `Servidor no encontrado: ${id}` });
 
-    // Mantener el id original; la edición no puede cambiar el id
+    // Mantener el id original; la edición no puede cambiar el id.
+    // Si no se envía winrmPassword (campo dejado en blanco a propósito en el form), conservar la existente.
     const incoming = { ...req.body, id };
+    if (!incoming.winrmPassword) incoming.winrmPassword = servers[idx].winrmPassword || null;
     const err = validate(incoming);
     if (err) return res.status(400).json({ error: err });
 

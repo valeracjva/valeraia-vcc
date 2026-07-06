@@ -62,6 +62,13 @@ export function formField(label, id, value, placeholder, readonly = false) {
     `</div>`;
 }
 
+export function formPasswordField(label, id, value, placeholder) {
+  return `<div class="form-field">` +
+    `<label class="form-label" for="${id}">${label}</label>` +
+    `<input class="form-input" type="password" id="${id}" value="${escHtml(value)}" placeholder="${escHtml(placeholder)}" autocomplete="new-password">` +
+    `</div>`;
+}
+
 export function formSelect(label, id, selected, options) {
   const opts = options.map(([v, l]) =>
     `<option value="${v}"${v === selected ? ' selected' : ''}>${l}</option>`
