@@ -30,9 +30,11 @@ export async function pollOnce() {
       }
 
       const transition = checkTransition(serverId, current);
-      commitState(serverId, current);
-      if (transition && !transition.first) {
-        await notifyTransition(serverId, transition.from, transition.to);
+      if (transition) {
+        commitState(serverId, current);
+        if (!transition.first) {
+          await notifyTransition(serverId, transition.from, transition.to);
+        }
       }
     } catch (err) {
       console.error(`[monitoring-core] host ${serverId} FAIL:`, err.message);

@@ -75,3 +75,23 @@ test('debounce: tras confirmar una transicion, un nuevo estado distinto arranca 
   const confirmed2 = checkTransition('srv-a', 'degradado');
   assert.deepEqual(confirmed2, { from: 'critico', to: 'degradado' });
 });
+
+test('patron real del poller (commitState solo si transition es truthy): una transicion sostenida se confirma', () => {
+  // Regresion del bug critico de final-review: poller.js llamaba a commitState()
+  // incondicionalmente en cada poll, lo que borraba pendingState antes de llegar
+  // al umbral de debounce y dejaba el alerting de transiciones inerte para siempre.
+  // Este test reproduce el llamador real (poller.js: checkTransition -> commitState
+  // solo si transition es truthy) y prueba que una transicion sostenida sí confirma.
+  _resetForTests();
+  commitState('srv-a', 'fresh'); // baseline
+
+  function simulatePoll(state) {
+    const transition = checkTransition('srv-a', state);
+    if (transition) commitState('srv-a', state);
+    return transition;
+  }
+
+  assert.equal(simulatePoll('critico'), null); // poll 1: pendiente
+  assert.deepEqual(simulatePoll('critico'), { from: 'fresh', to: 'critico' }); // poll 2: confirmado
+  assert.equal(simulatePoll('critico'), null); // poll 3: ya committeado, sin cambio, no vuelve a notificar
+});
