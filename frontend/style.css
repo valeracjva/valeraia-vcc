@@ -3614,6 +3614,32 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .project-card:hover,
 .tunnel-card:hover { border-color: var(--accent); }
 
+/* ── 16. Inventario — Glass Command Deck ──────────────────── */
+
+/* Fondo glass: sobreescribe el `background: var(--surface)` del bloque
+   compartido (.vcc-card/.infra-card/.project-card/.tunnel-card) solo para
+   .infra-card -- Proyectos y Túneles quedan sin cambios. */
+.infra-card {
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.15s, transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+/* Glow persistente por riesgo -- no depende de hover */
+.infra-card.risk-critico {
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.18), 0 0 16px rgba(239, 68, 68, 0.14);
+  animation: infra-card-glow-critical 2.4s ease-in-out infinite;
+}
+.infra-card.risk-alto {
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.16), 0 0 14px rgba(249, 115, 22, 0.10);
+}
+
+@keyframes infra-card-glow-critical {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.18), 0 0 12px rgba(239, 68, 68, 0.10); }
+  50%      { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.24), 0 0 20px rgba(239, 68, 68, 0.20); }
+}
+
 /* ── Proyectos toolbar: alineado al resto de vistas ─────────── */
 /* Elimina la apariencia de "card" (fondo + border) que la
    diferenciaba del toolbar de SSL/Túneles/Inventario.          */
