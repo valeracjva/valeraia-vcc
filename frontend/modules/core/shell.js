@@ -67,6 +67,8 @@ export function initSidebar() {
   });
 }
 
+const ACTIVE_TAB_KEY = 'vcc-active-tab';
+
 export function initTabs({ onTabChange } = {}) {
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -74,9 +76,18 @@ export function initTabs({ onTabChange } = {}) {
       document.querySelectorAll('.tab-panel').forEach((p) => p.classList.add('hidden'));
       btn.classList.add('active');
       document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
+      localStorage.setItem(ACTIVE_TAB_KEY, btn.dataset.tab);
       onTabChange?.(btn.dataset.tab);
     });
   });
+
+  // Restaura la ultima tab visitada -- por defecto quedaba siempre en Inicio al refrescar,
+  // perdiendo el lugar donde se estaba trabajando (ej. Inventario).
+  const saved = localStorage.getItem(ACTIVE_TAB_KEY);
+  if (saved) {
+    const btn = document.querySelector(`.tab-btn[data-tab="${saved}"]`);
+    if (btn) btn.click();
+  }
 }
 
 export function tickFooterClock() {

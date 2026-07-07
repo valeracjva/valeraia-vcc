@@ -7,7 +7,6 @@ import os from 'os';
 const router = Router();
 
 const VALID_RIESGOS = ['bajo', 'moderado', 'alto', 'critico'];
-const VALID_PERFILES = ['hyper-v', 'iis', 'sql-server', 'ad-dc', 'generico-windows'];
 
 function validate(s) {
   if (!s || typeof s !== 'object')             return 'servidor inválido';
@@ -18,10 +17,11 @@ function validate(s) {
   if (!VALID_RIESGOS.includes(s.riesgo))       return `riesgo inválido (${VALID_RIESGOS.join('|')})`;
   if (!Array.isArray(s.apps))                  return 'apps debe ser array';
   if (!Array.isArray(s.dominios))              return 'dominios debe ser array';
-  if (s.perfil !== undefined && s.perfil !== null) {
-    if (!Array.isArray(s.perfil))              return 'perfil debe ser array';
-    const invalido = s.perfil.find(p => !VALID_PERFILES.includes(p));
-    if (invalido)                              return `perfil inválido: ${invalido} (${VALID_PERFILES.join('|')})`;
+  // perfil = tags libres (igual que apps/dominios), aplica a Linux y Windows por igual --
+  // antes era un enum fijo de valores Windows (hyper-v/iis/sql-server/...) que bloqueaba
+  // etiquetas de Linux como "laravel".
+  if (s.perfil !== undefined && s.perfil !== null && !Array.isArray(s.perfil)) {
+    return 'perfil debe ser array';
   }
   return null;
 }
@@ -36,7 +36,7 @@ function clean(s) {
     rol:        (s.rol || '').trim(),
     riesgo:     s.riesgo,
     acceso:     (s.acceso || '').trim(),
-    perfil:     Array.isArray(s.perfil) ? s.perfil.filter(p => VALID_PERFILES.includes(p)) : [],
+    perfil:     Array.isArray(s.perfil) ? s.perfil.map(p => String(p).trim()).filter(Boolean) : [],
     sshUser:      s.sshUser?.trim() || null,
     sshKey:       s.sshKey?.trim()  || null,
     winrmUser:    s.winrmUser?.trim() || null,

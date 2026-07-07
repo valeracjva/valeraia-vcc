@@ -456,7 +456,7 @@ function showInventoryForm(srv, container, onClose) {
         formField('Acceso',    'infra-f-acceso',     srv?.acceso     || '', 'ej: VPN NRE') +
         formField('SSH usuario','infra-f-sshuser',   srv?.sshUser    || '', 'ej: ubuntu') +
         formField('SSH clave', 'infra-f-sshkey',     srv?.sshKey     || '', 'ej: .ssh/digna/srv.key') +
-        formField('Perfil (Windows, coma-separado)', 'infra-f-perfil', (srv?.perfil || []).join(','), 'ej: hyper-v,iis') +
+        formField('Perfil (coma-separado)', 'infra-f-perfil', (srv?.perfil || []).join(','), 'ej: hyper-v,iis / laravel,mysql') +
         formField('WinRM usuario', 'infra-f-winrmuser', srv?.winrmUser || '', 'ej: administrador') +
         formPasswordField('WinRM contraseña', 'infra-f-winrmpass', isEdit && srv?.winrmPassword ? '' : '', isEdit ? '(sin cambios si se deja vacío)' : 'contraseña') +
         formField('MySQL túnel','infra-f-mysqltun',  srv?.mysqlTunel || '', 'ej: local 3308 → 3306') +
@@ -555,8 +555,22 @@ function showInventoryForm(srv, container, onClose) {
   });
 }
 
+const GROUP_BY_KEY = 'vcc-infra-groupby';
+
 export function initInventory({ confirmDialog } = {}) {
   confirmDialogRef = confirmDialog ?? null;
+
+  // Restaura la agrupacion elegida la ultima vez (empresa/os/sin agrupar/listado) --
+  // antes siempre volvia a "Empresa" (default) al refrescar la pagina.
+  const savedGroup = localStorage.getItem(GROUP_BY_KEY);
+  if (savedGroup) {
+    const savedBtn = document.querySelector(`.btn-infra-group[data-group="${savedGroup}"]`);
+    if (savedBtn) {
+      document.querySelectorAll('.btn-infra-group').forEach(b => b.classList.remove('active'));
+      savedBtn.classList.add('active');
+      infraGroupBy = savedGroup;
+    }
+  }
 
   // Group-by buttons
   document.querySelectorAll('.btn-infra-group').forEach(btn => {
@@ -564,6 +578,7 @@ export function initInventory({ confirmDialog } = {}) {
       document.querySelectorAll('.btn-infra-group').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       infraGroupBy = btn.dataset.group;
+      localStorage.setItem(GROUP_BY_KEY, infraGroupBy);
       renderInventory(infraAllServers);
     });
   });
@@ -677,7 +692,8 @@ function metricBar(label, pct, absText, sparkValues, hideCtx) {
 // El desglose completo por disco vive dentro del acordeon (apps/dominios/notas), no en la vista
 // principal de la card -- ahi solo se muestra una fila agregada (peor caso). Evita que 5 barras
 // casi identicas sean el primer impacto visual de la card; el detalle sigue a un click de distancia.
-function updateDiskDetails(serverId, allDisks, hiddenLabels) {
+// worstLabel se excluye del listado -- ya se muestra arriba, listarlo tambien aca es duplicado.
+function updateDiskDetails(serverId, allDisks, hiddenLabels, worstLabel) {
   const card = document.querySelector(`.infra-card[data-server="${CSS.escape(serverId)}"]`);
   if (!card) return;
   const disksEl = card.querySelector('.infra-detail-disks');
@@ -686,7 +702,7 @@ function updateDiskDetails(serverId, allDisks, hiddenLabels) {
   if (disksEl) {
     if (showBreakdown) {
       const rows = allDisks
-        .filter(d => !hiddenLabels.includes(d.label))
+        .filter(d => !hiddenLabels.includes(d.label) && d.label !== worstLabel)
         .map(d => metricBar(d.label, d.pct, `${Math.round(d.totalGB * d.pct / 100)}/${d.totalGB} GB`, [], { serverId, label: d.label }))
         .join('');
       const restoreLine = hiddenLabels.length > 0
@@ -741,8 +757,10 @@ function applyMetrics(m) {
     let diskRows;
     if (Array.isArray(base.disks) && base.disks.length > 0) {
       const visibles = base.disks.filter(d => !hiddenDisks.includes(d.label));
+      let worstLabel = null;
       if (visibles.length > 1) {
         const worst = visibles.reduce((a, b) => (b.pct > a.pct ? b : a));
+        worstLabel = worst.label;
         // Label fijo "DSK" (mismo ancho que CPU/RAM) -- "Disco (N)" se truncaba a "Disc…" con
         // el ancho fijo de .metric-label. El conteo y el peor disco ya quedan en abs/toggle.
         diskRows = metricBar(
@@ -752,14 +770,17 @@ function applyMetrics(m) {
         );
       } else if (visibles.length === 1) {
         const only = visibles[0];
+        worstLabel = only.label;
         diskRows = metricBar(only.label, only.pct, `${Math.round(only.totalGB * only.pct / 100)}/${only.totalGB} GB`, diskHist);
       } else {
         diskRows = `<div class="metric-unreachable">todos los discos ocultos</div>`;
       }
-      updateDiskDetails(m.serverId, base.disks, hiddenDisks);
+      // worstLabel se excluye del desglose del acordeon -- ya se muestra arriba, listarlo
+      // tambien adentro es el mismo disco duplicado en dos lugares de la card.
+      updateDiskDetails(m.serverId, base.disks, hiddenDisks, worstLabel);
     } else {
       diskRows = metricBar('DSK', base.disk.pct, diskAbs, diskHist);
-      updateDiskDetails(m.serverId, null, []);
+      updateDiskDetails(m.serverId, null, [], null);
     }
 
     metricsHtml =
@@ -795,13 +816,16 @@ function applyMetrics(m) {
   if (metricsEl2) metricsEl2.innerHTML = metricsHtml;
 }
 
+// Solo marca el dot como "pendiente" -- NO vacia el contenido de .infra-metrics. Las 14 cards
+// se fetchean en paralelo pero resuelven en momentos distintos; vaciar todo de entrada hacia que
+// la vista entera "parpadeara" a blanco antes de repoblarse junta. Dejar la metrica anterior
+// visible hasta que llegue la nueva hace que cada card se actualice sola, de a poco.
 function setMetricsLoadingState() {
   document.querySelectorAll('.infra-conn-dot').forEach(dot => {
-    dot.className = 'infra-conn-dot pending';
-    dot.title = 'Actualizando…';
-  });
-  document.querySelectorAll('.infra-metrics').forEach(el => {
-    el.innerHTML = '<div class="metric-loading">actualizando…</div>';
+    if (!dot.classList.contains('ok') && !dot.classList.contains('warn') && !dot.classList.contains('down')) {
+      dot.className = 'infra-conn-dot pending';
+      dot.title = 'Actualizando…';
+    }
   });
 }
 
