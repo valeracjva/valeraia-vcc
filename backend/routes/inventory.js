@@ -8,7 +8,7 @@ const router = Router();
 
 const VALID_RIESGOS = ['bajo', 'moderado', 'alto', 'critico'];
 
-function validate(s) {
+export function validate(s) {
   if (!s || typeof s !== 'object')             return 'servidor inválido';
   if (!s.id?.trim())                           return 'id requerido';
   if (!s.ip?.trim())                           return 'ip requerida';
@@ -26,7 +26,7 @@ function validate(s) {
   return null;
 }
 
-function clean(s) {
+export function clean(s) {
   return {
     monitoreado: s.monitoreado === true,
     id:         s.id.trim(),
@@ -37,6 +37,10 @@ function clean(s) {
     riesgo:     s.riesgo,
     acceso:     (s.acceso || '').trim(),
     perfil:     Array.isArray(s.perfil) ? s.perfil.map(p => String(p).trim()).filter(Boolean) : [],
+    // localAgent: true si el host ya tiene el stack de monitoreo local desplegado
+    // (Linux: projects/monitoreo/, Windows: projects/monitoreo/windows/) -- monitoring-core/poller.js
+    // solo escribe heartbeat en hosts con este flag, el resto no tiene fallback local que coordinar.
+    localAgent: s.localAgent === true,
     sshUser:      s.sshUser?.trim() || null,
     sshKey:       s.sshKey?.trim()  || null,
     winrmUser:    s.winrmUser?.trim() || null,
