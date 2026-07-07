@@ -2,7 +2,7 @@ import { API_BASE, FRESHNESS_STATES, POLL_MS } from './modules/core/constants.js
 import { get, apiFetch } from './modules/core/api.js';
 import { buildAccordion, escHtml, formField, formSelect, showManageBanner } from './modules/core/dom.js';
 import { initSidebar, initTabs, initTheme, tickFooterClock, confirmDialog, openJsonModal, initJsonModal } from './modules/core/shell.js';
-import { renderBriefing } from './modules/tabs/briefing.js';
+import { renderBriefing, loadCatchupBanner } from './modules/tabs/briefing.js';
 import { renderCockpit } from './modules/tabs/cockpit.js';
 import { initGovern, connectGovernWS } from './modules/tabs/govern.js';
 import { initApis, loadApis } from './modules/tabs/apis.js';
@@ -164,6 +164,7 @@ async function init() {
   tickFooterClock();
   setInterval(tickFooterClock, 10_000);
   await update();
+  await loadCatchupBanner();
   await loadProjects();
   await Promise.all([loadSSL(), loadTunnels(), loadInventory()]);
   // Métricas después del inventario (cards deben existir)

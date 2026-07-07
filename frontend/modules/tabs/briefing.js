@@ -1,5 +1,28 @@
 import { escHtml } from '../core/dom.js';
 
+// Se pide una sola vez al cargar la app (ver app.js init()), no en cada refresh de 30s --
+// el catch-up es "que paso mientras VCC estaba apagado", no cambia mientras la sesion sigue activa.
+let catchupHtml = '';
+
+export async function loadCatchupBanner() {
+  try {
+    const res = await fetch('/api/monitoring-core/catchup');
+    const data = await res.json();
+    const withEvents = (data.hosts ?? []).filter(h => h.events?.length > 0 && !h.error);
+    if (withEvents.length === 0) { catchupHtml = ''; return; }
+    const items = withEvents.map(h =>
+      `<div class="brief-catchup-host"><strong>${escHtml(h.serverId)}</strong>: ${h.events.length} evento(s) desde el último heartbeat</div>`
+    ).join('');
+    catchupHtml =
+      `<div class="briefing-card briefing-full brief-catchup">` +
+      `<div class="briefing-card-label">MIENTRAS VCC ESTABA APAGADO</div>` +
+      `<div class="briefing-card-body">${items}</div>` +
+      `</div>`;
+  } catch {
+    catchupHtml = '';
+  }
+}
+
 export function parsePendientesDetail(sections) {
   const raw = sections['Pendientes'] ?? '';
   const items = { P1: [], P2: [], P3: [], P4: [] };
@@ -65,6 +88,8 @@ export function renderBriefing(sections) {
     `<div class="brief-hero-label">PRÓXIMO PASO</div>` +
     `<div class="brief-hero-text">${escHtml(nextStep || '—')}</div>` +
     `</div>` +
+
+    catchupHtml +
 
     `<div class="briefing-card ok">` +
     `<div class="briefing-card-label">ESTADO ACTUAL</div>` +
