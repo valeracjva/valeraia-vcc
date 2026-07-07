@@ -23,7 +23,7 @@ export async function pollOnce() {
   for (const { serverId, conf, data } of results) {
     try {
       const current = healthState(data);
-      if (!current) continue; // sin dato (no-config) -- nada que evaluar
+      if (!current) continue; // defensivo: healthState() no deberia devolver null aca, pero no asumimos
 
       if (agentHosts.has(serverId)) {
         await writeHeartbeat(serverId, conf);

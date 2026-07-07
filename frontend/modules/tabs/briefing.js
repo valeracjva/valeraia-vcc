@@ -1,4 +1,5 @@
 import { escHtml } from '../core/dom.js';
+import { get } from '../core/api.js';
 
 // Se pide una sola vez al cargar la app (ver app.js init()), no en cada refresh de 30s --
 // el catch-up es "que paso mientras VCC estaba apagado", no cambia mientras la sesion sigue activa.
@@ -6,8 +7,7 @@ let catchupHtml = '';
 
 export async function loadCatchupBanner() {
   try {
-    const res = await fetch('/api/monitoring-core/catchup');
-    const data = await res.json();
+    const data = await get('/api/monitoring-core/catchup');
     const withEvents = (data.hosts ?? []).filter(h => h.events?.length > 0 && !h.error);
     if (withEvents.length === 0) { catchupHtml = ''; return; }
     const items = withEvents.map(h =>

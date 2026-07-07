@@ -163,8 +163,8 @@ async function init() {
   connectGovernWS();
   tickFooterClock();
   setInterval(tickFooterClock, 10_000);
-  await update();
   await loadCatchupBanner();
+  await update();
   await loadProjects();
   await Promise.all([loadSSL(), loadTunnels(), loadInventory()]);
   // Métricas después del inventario (cards deben existir)
