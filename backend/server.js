@@ -23,6 +23,8 @@ import tunnelDbRouter  from './routes/tunnel-db.js';
 import opsmapRouter    from './routes/opsmap.js';
 import apisRouter      from './routes/apis.js';
 import mcpRouter       from './routes/mcp.js';
+import monitoringCoreRouter from './routes/monitoring-core.js';
+import { startPoller } from './monitoring-core/poller.js';
 
 const app = express();
 
@@ -62,6 +64,7 @@ app.use('/api/tunnel-db', tunnelDbRouter);
 app.use('/api/opsmap',    opsmapRouter);
 app.use('/api/apis',      apisRouter);
 app.use('/api/mcp',       mcpRouter);
+app.use('/api/monitoring-core', monitoringCoreRouter);
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({
@@ -97,5 +100,9 @@ httpServer.listen(SERVER.port, SERVER.host, () => {
     const ok = existsSync(filePath);
     console.log(`  ${ok ? '✓' : '✗'} ${label}${ok ? '' : '  ← ARCHIVO NO ENCONTRADO'}`);
   }
+
+  startPoller();
+  console.log('  ✓ Monitoring core: poller propio iniciado (heartbeat + transición de estado + Telegram)');
+
   console.log('');
 });
