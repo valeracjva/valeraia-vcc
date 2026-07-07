@@ -14,7 +14,7 @@ foreach ($ch in $env:VCC_WINRM_PASS.ToCharArray()) { $pass.AppendChar($ch) }
 $cred = New-Object System.Management.Automation.PSCredential($env:VCC_WINRM_USER, $pass)
 Invoke-Command -ComputerName $env:VCC_WINRM_HOST -Credential $cred -ScriptBlock {
   Get-ChildItem -Path 'C:\\ProgramData\\Monitoring\\state' -Filter '*.json' -ErrorAction SilentlyContinue |
-    ForEach-Object { Get-Content -Path $_.FullName -Raw | ConvertFrom-Json }
+    ForEach-Object { $file = $_; (Get-Content -Path $file.FullName -Raw | ConvertFrom-Json) | Add-Member -NotePropertyName CheckName -NotePropertyValue $file.BaseName -PassThru }
 } | ConvertTo-Json -Compress -Depth 4
 `.trim();
 

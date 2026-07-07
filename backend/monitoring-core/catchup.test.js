@@ -15,10 +15,11 @@ test('parseLinuxLogTail con salida vacia devuelve array vacio', () => {
 
 test('parseWindowsStateJson parsea un array de objetos Status/Valor/Timestamp', () => {
   const raw = JSON.stringify([
-    { Status: 'critico', Valor: '92', Timestamp: '2026-07-07T14:32:10Z', DesdeTimestamp: '2026-07-07T14:32:10Z' },
+    { CheckName: 'disco', Status: 'critico', Valor: '92', Timestamp: '2026-07-07T14:32:10Z', DesdeTimestamp: '2026-07-07T14:32:10Z' },
   ]);
   const events = parseWindowsStateJson(raw);
   assert.equal(events.length, 1);
+  assert.equal(events[0].check, 'disco');
   assert.equal(events[0].status, 'critico');
   assert.equal(events[0].valor, '92');
 });
