@@ -11,11 +11,11 @@ export async function loadCatchupBanner() {
     const withEvents = (data.hosts ?? []).filter(h => h.events?.length > 0 && !h.error);
     if (withEvents.length === 0) { catchupHtml = ''; return; }
     const items = withEvents.map(h =>
-      `<div class="brief-catchup-host"><strong>${escHtml(h.serverId)}</strong>: ${h.events.length} evento(s) desde el último heartbeat</div>`
+      `<div class="brief-catchup-host"><strong>${escHtml(h.serverId)}</strong>: ${h.events.length} registro(s) de estado disponible(s)</div>`
     ).join('');
     catchupHtml =
       `<div class="briefing-card briefing-full brief-catchup">` +
-      `<div class="briefing-card-label">MIENTRAS VCC ESTABA APAGADO</div>` +
+      `<div class="briefing-card-label">ESTADO REGISTRADO EN LOS HOSTS CON AGENTE LOCAL</div>` +
       `<div class="briefing-card-body">${items}</div>` +
       `</div>`;
   } catch {

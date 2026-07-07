@@ -47,6 +47,10 @@ export function parseWindowsStateJson(rawOutput) {
   }
 }
 
+// Devuelve el estado actual/reciente por host (estado por check en Windows, tail del log
+// en Linux) -- NO filtra por antiguedad del heartbeat todavia. Filtrar de verdad "que paso
+// desde que VCC dejo de mirar" requiere comparar timestamps entre dos convenciones de OS
+// distintas -- queda deferido, no implementado aca.
 export async function readCatchupForHost(serverId, conf) {
   if (conf.type === 'winrm') {
     const result = await winrmExecRaw(conf, WINRM_CATCHUP_SCRIPT);
