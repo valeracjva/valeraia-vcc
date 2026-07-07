@@ -32,6 +32,10 @@
   --accent-2:    #818CF8;
   --accent-glow: rgba(99, 102, 241, 0.15);
 
+  /* Glass surface & dot pattern (Task 1) */
+  --surface-glass: rgba(17, 24, 39, 0.72);
+  --dot-pattern:   rgba(255, 255, 255, 0.035);
+
   /* Legacy tokens — usados en componentes heredados */
   --green:       #22C55E;
   --amber:       #F59E0B;
@@ -84,6 +88,10 @@ html[data-theme="light"] {
   --accent:      #5048CC;
   --accent-2:    #6B63E0;
   --accent-glow: rgba(80, 72, 204, 0.08);
+
+  /* Glass surface & dot pattern (Task 1) */
+  --surface-glass: rgba(245, 242, 237, 0.72);
+  --dot-pattern:   rgba(0, 0, 0, 0.035);
 }
 
 /* En tema claro el output sigue al sistema */
