@@ -3647,7 +3647,8 @@ html[data-theme="light"] .btn-infra-monitored.active {
 
 /* El hover de riesgo CRIT/ALTO no debe perder su halo de color al pasar el mouse */
 .infra-card.risk-critico:hover {
-  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--accent), 0 0 20px rgba(239, 68, 68, 0.22);
+  animation-play-state: paused;
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--accent), 0 0 20px rgba(239, 68, 68, 0.24);
 }
 
 .infra-card.risk-alto:hover {
