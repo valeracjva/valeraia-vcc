@@ -21,17 +21,21 @@ export async function pollOnce() {
   const [results, agentHosts] = await Promise.all([pollAllServers(), localAgentHosts()]);
 
   for (const { serverId, conf, data } of results) {
-    const current = healthState(data);
-    if (!current) continue; // sin dato (no-config) -- nada que evaluar
+    try {
+      const current = healthState(data);
+      if (!current) continue; // sin dato (no-config) -- nada que evaluar
 
-    if (agentHosts.has(serverId)) {
-      await writeHeartbeat(serverId, conf);
-    }
+      if (agentHosts.has(serverId)) {
+        await writeHeartbeat(serverId, conf);
+      }
 
-    const transition = checkTransition(serverId, current);
-    commitState(serverId, current);
-    if (transition && !transition.first) {
-      await notifyTransition(serverId, transition.from, transition.to);
+      const transition = checkTransition(serverId, current);
+      commitState(serverId, current);
+      if (transition && !transition.first) {
+        await notifyTransition(serverId, transition.from, transition.to);
+      }
+    } catch (err) {
+      console.error(`[monitoring-core] host ${serverId} FAIL:`, err.message);
     }
   }
 }
