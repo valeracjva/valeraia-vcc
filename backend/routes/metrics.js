@@ -8,7 +8,7 @@ import { timingSafeEqual } from 'crypto';
 import { Client } from 'ssh2';
 import { PATHS } from '../config.js';
 
-async function getMonitoredServers() {
+export async function getMonitoredServers() {
   const raw = await readFile(PATHS.serversConfig, 'utf8');
   const { servers } = JSON.parse(raw);
   const result = {};
@@ -51,7 +51,7 @@ function timeoutMsForHost(host) {
   return 8000;
 }
 
-function sshExec(conf, cmd) {
+export function sshExec(conf, cmd) {
   return new Promise((resolve) => {
     const conn = new Client();
     let settled = false;
@@ -153,15 +153,14 @@ $r = Invoke-Command -ComputerName $env:VCC_WINRM_HOST -Credential $cred -ScriptB
 $r | ConvertTo-Json -Compress -Depth 4
 `.trim();
 
-function winrmExec(conf) {
+// Generico: ejecuta cualquier script PS remoto via WinRM con las mismas credenciales
+// env VCC_WINRM_*. Reutilizado por metrics (WINRM_SCRIPT) y por monitoring-core/heartbeat.js
+// y monitoring-core/catchup.js (scripts distintos, misma plumbing de conexion).
+export function winrmExecRaw(conf, remoteScript, timeoutMs = 15_000) {
   return new Promise((resolve) => {
-    // WinRM (autenticacion NTLM + spawn de powershell.exe + Invoke-Command real) es mas lento
-    // que un exec SSH directo -- el timeout corto de timeoutMsForHost() cortaba el proceso
-    // a mitad de la respuesta CLIXML antes de completar.
-    const timeoutMs = 15_000;
     // -EncodedCommand (Base64 UTF-16LE) evita que Windows rompa el quoting/newlines
     // de un script multilinea pasado como argumento de proceso via -Command.
-    const encoded = Buffer.from(WINRM_SCRIPT, 'utf16le').toString('base64');
+    const encoded = Buffer.from(remoteScript, 'utf16le').toString('base64');
     execFile(
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
@@ -189,6 +188,13 @@ function winrmExec(conf) {
       }
     );
   });
+}
+
+// WinRM (autenticacion NTLM + spawn de powershell.exe + Invoke-Command real) es mas lento
+// que un exec SSH directo -- el timeout corto de timeoutMsForHost() cortaba el proceso
+// a mitad de la respuesta CLIXML antes de completar. winrmExecRaw ya usa 15s por defecto.
+function winrmExec(conf) {
+  return winrmExecRaw(conf, WINRM_SCRIPT);
 }
 
 function parseWinrm(out) {
@@ -315,5 +321,25 @@ router.get('/:id', async (req, res) => {
 
   res.json(await fetchWithHistory(id, MONITORED[id], force, now));
 });
+
+// Usado por monitoring-core/poller.js para su propio ciclo de polling (no disparado por
+// requests HTTP del frontend). Devuelve tambien `conf` por servidor -- heartbeat.js y
+// catchup.js necesitan la config de conexion (ssh/winrm) para abrir su propio canal.
+export async function pollAllServers(force = false) {
+  const now = Date.now();
+  const MONITORED = await getMonitoredServers();
+  const ids = Object.keys(MONITORED);
+  const results = await Promise.allSettled(
+    ids.map((id) => fetchWithHistory(id, MONITORED[id], force, now))
+  );
+  return ids.map((id, i) => {
+    const r = results[i];
+    return {
+      serverId: id,
+      conf: MONITORED[id],
+      data: r.status === 'fulfilled' ? r.value : { serverId: id, status: 'unreachable', error: r.reason?.message ?? 'unknown error' },
+    };
+  });
+}
 
 export default router;
