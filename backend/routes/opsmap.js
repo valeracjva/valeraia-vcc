@@ -67,7 +67,7 @@ function addLink(list, from, to, type, label = type) {
 
 // Estado real del servidor a partir de la última métrica cacheada (metrics.js),
 // no del campo estático `riesgo`. `null` si nunca se monitoreó/todavía no hay dato.
-function healthState(health) {
+export function healthState(health) {
   if (!health) return null;
   if (health.status !== 'ok') return 'critico'; // unreachable / parse-error / timeout / no-config
   const worst = Math.max(health.cpu?.pct ?? 0, health.ram?.pct ?? 0, health.disk?.pct ?? 0);
