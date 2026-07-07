@@ -3640,6 +3640,20 @@ html[data-theme="light"] .btn-infra-monitored.active {
   50%      { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.24), 0 0 20px rgba(239, 68, 68, 0.20); }
 }
 
+.infra-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--accent);
+}
+
+/* El hover de riesgo CRIT/ALTO no debe perder su halo de color al pasar el mouse */
+.infra-card.risk-critico:hover {
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--accent), 0 0 20px rgba(239, 68, 68, 0.22);
+}
+
+.infra-card.risk-alto:hover {
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--accent), 0 0 16px rgba(249, 115, 22, 0.16);
+}
+
 /* ── Proyectos toolbar: alineado al resto de vistas ─────────── */
 /* Elimina la apariencia de "card" (fondo + border) que la
    diferenciaba del toolbar de SSL/Túneles/Inventario.          */
