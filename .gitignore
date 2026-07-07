@@ -10,3 +10,6 @@ node_modules/
 ssl-watch.json
 tunnels-config.json
 servers-config.json
+
+# Bot de Telegram propio de VCC -- credenciales, no versionar
+backend/monitoring-core/telegram-config.json
