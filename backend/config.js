@@ -21,6 +21,7 @@ export const PATHS = {
   tunnelsConfig:   path.join(VCC_DATA, 'tunnels-config.json'),
   serverInventory: path.join(WORKSPACE_ROOT, 'global', 'servers', 'SERVER_INVENTORY.md'),
   serversConfig:   path.join(VCC_DATA, 'servers-config.json'),
+  linksInventory:  path.join(VCC_DATA, 'links-inventory.json'),
 };
 
 export const SERVER = {

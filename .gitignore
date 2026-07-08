@@ -10,3 +10,4 @@ node_modules/
 ssl-watch.json
 tunnels-config.json
 servers-config.json
+links-inventory.json

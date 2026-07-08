@@ -23,6 +23,7 @@ import tunnelDbRouter  from './routes/tunnel-db.js';
 import opsmapRouter    from './routes/opsmap.js';
 import apisRouter      from './routes/apis.js';
 import mcpRouter       from './routes/mcp.js';
+import linksRouter     from './routes/links.js';
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use('/api/tunnel-db', tunnelDbRouter);
 app.use('/api/opsmap',    opsmapRouter);
 app.use('/api/apis',      apisRouter);
 app.use('/api/mcp',       mcpRouter);
+app.use('/api/links',    linksRouter);
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({
