@@ -679,7 +679,7 @@ function metricBar(label, pct, absText, sparkValues, hideCtx) {
     `<div class="metric-row metric-${level}" title="${escHtml(label)}: ${escHtml(absText ?? '')}">` +
       `<span class="metric-label">${label}</span>` +
       `<div class="metric-bar-track">` +
-        `<div class="metric-bar-fill" style="width:${clamped}%;background:${color}"></div>` +
+        `<div class="metric-bar-fill" style="width:${clamped}%;background:linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 70%, white 30%))"></div>` +
       `</div>` +
       `<span class="metric-value" style="color:${color}">${clamped}%</span>` +
       `<span class="metric-abs">${escHtml(absText ?? '')}</span>` +
