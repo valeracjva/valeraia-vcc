@@ -3616,6 +3616,12 @@ html[data-theme="light"] .btn-infra-monitored.active {
 
 /* ── 16. Inventario — Glass Command Deck ──────────────────── */
 
+#infra-container {
+  position: relative;
+  background-image: radial-gradient(circle, var(--dot-pattern) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
 /* Fondo glass: sobreescribe el `background: var(--surface)` del bloque
    compartido (.vcc-card/.infra-card/.project-card/.tunnel-card) solo para
    .infra-card -- Proyectos y Túneles quedan sin cambios. */
