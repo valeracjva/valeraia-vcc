@@ -1,5 +1,5 @@
 import { get, apiFetch } from '../core/api.js';
-import { escHtml } from '../core/dom.js';
+import { escHtml, formField, formSelect } from '../core/dom.js';
 
 const ESTADO_COLOR = {
   Pendiente:    'var(--text-faint)',
@@ -59,7 +59,10 @@ function buildLinkCard(link) {
     await loadLinks();
   });
 
-  // Nota: el botón data-edit-id se cablea en Task 5, cuando exista el form de edición.
+  card.querySelector('[data-edit-id]').addEventListener('click', (e) => {
+    e.stopPropagation();
+    showLinksForm(link);
+  });
 
   card.querySelector('[data-del-id]').addEventListener('click', async (e) => {
     e.stopPropagation();
@@ -132,5 +135,77 @@ export function initLinks({ confirmDialog } = {}) {
     linksFilterFavOnly = !linksFilterFavOnly;
     e.currentTarget.classList.toggle('active', linksFilterFavOnly);
     renderLinksView();
+  });
+
+  document.getElementById('btn-links-add')?.addEventListener('click', () => showLinksForm(null));
+}
+
+function showLinksForm(link) {
+  const isEdit = link !== null;
+  const container = document.getElementById('links-form-container');
+  const tagsText = (link?.tags ?? []).join(', ');
+
+  container.innerHTML =
+    `<div class="modal-overlay" id="links-form-overlay">` +
+      `<div class="modal-box manage-form">` +
+        `<div class="manage-form-title">${isEdit ? 'Editar link' : 'Nuevo link'}</div>` +
+        formField('URL', 'links-f-url', link?.url ?? '', 'https://...') +
+        `<div class="manage-banner hidden" id="links-f-dup-warning"></div>` +
+        formField('Título', 'links-f-titulo', link?.titulo ?? '', 'Título descriptivo') +
+        `<div class="manage-form-grid">` +
+          formSelect('Tipo', 'links-f-tipo', link?.tipo ?? 'Otro', [
+            ['Repo', 'Repo'], ['Articulo', 'Artículo'], ['Skill', 'Skill'], ['MCP', 'MCP'], ['Otro', 'Otro'],
+          ]) +
+          formSelect('Estado', 'links-f-estado', link?.estado ?? 'Pendiente', [
+            ['Pendiente', 'Pendiente'], ['Revisado', 'Revisado'], ['Implementar', 'Implementar'], ['Descartado', 'Descartado'],
+          ]) +
+        `</div>` +
+        formField('Tags (separados por coma)', 'links-f-tags', tagsText, 'laravel, n8n') +
+        `<label class="form-label" for="links-f-nota">Nota</label>` +
+        `<textarea class="form-textarea" id="links-f-nota" rows="3" placeholder="Nota opcional">${link?.nota ?? ''}</textarea>` +
+        `<div class="manage-form-actions">` +
+          `<button class="btn btn-ghost btn-modal-cancel" id="btn-links-form-cancel">Cancelar</button>` +
+          `<button class="btn btn-primary btn-modal-ok" id="btn-links-form-save">${isEdit ? 'Guardar cambios' : 'Agregar'}</button>` +
+        `</div>` +
+      `</div>` +
+    `</div>`;
+
+  const overlay = document.getElementById('links-form-overlay');
+  const close = () => { container.innerHTML = ''; };
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.getElementById('btn-links-form-cancel').addEventListener('click', close);
+
+  // Aviso no bloqueante de URL duplicada (no impide guardar, solo informa)
+  const urlInput  = document.getElementById('links-f-url');
+  const dupWarning = document.getElementById('links-f-dup-warning');
+  urlInput.addEventListener('input', () => {
+    const val = urlInput.value.trim();
+    const dup = val && linksAllData.some(l => l.url === val && l.id !== link?.id);
+    dupWarning.textContent = dup ? 'Ya existe un link guardado con esta URL. Se puede guardar igual.' : '';
+    dupWarning.classList.toggle('hidden', !dup);
+  });
+
+  document.getElementById('btn-links-form-save').addEventListener('click', async () => {
+    const url    = document.getElementById('links-f-url').value.trim();
+    const titulo = document.getElementById('links-f-titulo').value.trim();
+    const tipo   = document.getElementById('links-f-tipo').value;
+    const estado = document.getElementById('links-f-estado').value;
+    const tags   = document.getElementById('links-f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+    const nota   = document.getElementById('links-f-nota').value.trim();
+
+    if (!url || !titulo) return;
+
+    const body = { url, titulo, tipo, estado, tags, nota };
+    try {
+      if (isEdit) {
+        await apiFetch(`/api/links/${encodeURIComponent(link.id)}`, { method: 'PATCH', body });
+      } else {
+        await apiFetch('/api/links', { method: 'POST', body });
+      }
+      close();
+      await loadLinks();
+    } catch (err) {
+      alert(`Error al guardar: ${err.message}`);
+    }
   });
 }
