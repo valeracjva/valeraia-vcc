@@ -1,5 +1,5 @@
 import { get, apiFetch } from '../core/api.js';
-import { escHtml, formField, formSelect } from '../core/dom.js';
+import { escHtml, formField, formSelect, showManageBanner } from '../core/dom.js';
 
 const ESTADO_COLOR = {
   Pendiente:    'var(--text-faint)',
@@ -162,7 +162,8 @@ function showLinksForm(link) {
         `</div>` +
         formField('Tags (separados por coma)', 'links-f-tags', tagsText, 'laravel, n8n') +
         `<label class="form-label" for="links-f-nota">Nota</label>` +
-        `<textarea class="form-textarea" id="links-f-nota" rows="3" placeholder="Nota opcional">${link?.nota ?? ''}</textarea>` +
+        `<textarea class="form-textarea" id="links-f-nota" rows="3" placeholder="Nota opcional">${escHtml(link?.nota ?? '')}</textarea>` +
+        `<div class="manage-banner hidden" id="links-f-save-error"></div>` +
         `<div class="manage-form-actions">` +
           `<button class="btn btn-ghost btn-modal-cancel" id="btn-links-form-cancel">Cancelar</button>` +
           `<button class="btn btn-primary btn-modal-ok" id="btn-links-form-save">${isEdit ? 'Guardar cambios' : 'Agregar'}</button>` +
@@ -205,7 +206,7 @@ function showLinksForm(link) {
       close();
       await loadLinks();
     } catch (err) {
-      alert(`Error al guardar: ${err.message}`);
+      showManageBanner('links-f-save-error', `Error al guardar: ${err.message}`, true);
     }
   });
 }
