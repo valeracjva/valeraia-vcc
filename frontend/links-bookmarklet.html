@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VCC — Bookmarklet Links</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; line-height: 1.6; }
+  .bookmarklet-btn {
+    display: inline-block; padding: 10px 18px; background: #6366F1; color: white;
+    border-radius: 6px; text-decoration: none; font-weight: 600; cursor: grab;
+  }
+  code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>VCC — Guardar en Links</h1>
+  <p>Arrastrá este botón a la barra de marcadores de Chrome:</p>
+  <p>
+    <a class="bookmarklet-btn" href="javascript:(function(){fetch('http://localhost:8080/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:location.href,titulo:document.title})}).then(function(r){return r.ok?alert('Guardado en VCC ✓'):r.json().then(function(d){alert('Error: '+(d.error||r.status))})}).catch(function(){alert('VCC no está corriendo en localhost:8080')})})();">
+      ＋ Guardar en VCC
+    </a>
+  </p>
+  <p>Con la pestaña que querés guardar activa, hacé click en el botón de la barra de marcadores.
+     Requiere que el backend de VCC (<code>npm start</code> en <code>backend/</code>) esté corriendo en <code>localhost:8080</code>.</p>
+</body>
+</html>
