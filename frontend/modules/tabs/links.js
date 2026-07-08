@@ -1,0 +1,136 @@
+import { get, apiFetch } from '../core/api.js';
+import { escHtml } from '../core/dom.js';
+
+const ESTADO_COLOR = {
+  Pendiente:    'var(--text-faint)',
+  Revisado:     'var(--info)',
+  Implementar:  'var(--warning)',
+  Descartado:   'var(--danger)',
+};
+
+let linksAllData = [];
+let linksFilterTipo = '';
+let linksFilterEstado = '';
+let linksFilterFavOnly = false;
+let confirmDialogRef = null;
+
+function truncate(str, max) {
+  return str.length > max ? str.slice(0, max - 1) + '…' : str;
+}
+
+export function filterLinks(links, { tipo, estado, favOnly }) {
+  return links.filter(l =>
+    (!tipo || l.tipo === tipo) &&
+    (!estado || l.estado === estado) &&
+    (!favOnly || l.favorito === true)
+  );
+}
+
+function buildLinkCard(link) {
+  const card = document.createElement('div');
+  card.className = 'infra-card';
+  card.style.borderLeft = `3px solid ${ESTADO_COLOR[link.estado]}`;
+
+  const tagsHtml = link.tags.map(t =>
+    `<span class="infra-risk-badge" style="color:var(--text-faint);border-color:var(--text-faint)">${escHtml(t)}</span>`
+  ).join(' ');
+
+  card.innerHTML =
+    `<div class="infra-card-header">` +
+      `<button class="infra-edit-btn" style="opacity:1" title="Favorito" data-fav-id="${link.id}">${link.favorito ? '★' : '☆'}</button>` +
+      `<span class="infra-id">${escHtml(truncate(link.titulo, 60))}</span>` +
+      `<span class="infra-risk-badge" style="color:var(--accent);border-color:var(--accent)">${escHtml(link.tipo)}</span>` +
+      `<span class="infra-risk-badge" style="color:${ESTADO_COLOR[link.estado]};border-color:${ESTADO_COLOR[link.estado]}">${escHtml(link.estado)}</span>` +
+      `<button class="infra-edit-btn" title="Editar" data-edit-id="${link.id}">✎</button>` +
+      `<button class="infra-hide-btn" title="Eliminar" data-del-id="${link.id}">×</button>` +
+    `</div>` +
+    `<div class="infra-ip">${escHtml(truncate(link.url, 70))}</div>` +
+    (link.nota ? `<div class="infra-os">${escHtml(link.nota)}</div>` : '') +
+    (tagsHtml ? `<div class="infra-empresa">${tagsHtml}</div>` : '');
+
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    window.open(link.url, '_blank', 'noopener');
+  });
+
+  card.querySelector('[data-fav-id]').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await apiFetch(`/api/links/${encodeURIComponent(link.id)}`, { method: 'PATCH', body: { favorito: !link.favorito } });
+    await loadLinks();
+  });
+
+  // Nota: el botón data-edit-id se cablea en Task 5, cuando exista el form de edición.
+
+  card.querySelector('[data-del-id]').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const ok = await confirmDialogRef(`¿Eliminar "${link.titulo}"?`, 'Esta acción no se puede deshacer.', true);
+    if (!ok) return;
+    await apiFetch(`/api/links/${encodeURIComponent(link.id)}`, { method: 'DELETE' });
+    await loadLinks();
+  });
+
+  return card;
+}
+
+function renderLinksView() {
+  const c = document.getElementById('links-container');
+  if (!c) return;
+  const visible = filterLinks(linksAllData, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly });
+
+  const counter = document.getElementById('links-counter');
+  if (counter) counter.textContent = `${visible.length} de ${linksAllData.length}`;
+
+  c.innerHTML = '';
+  if (!visible.length) {
+    c.innerHTML = `<div class="infra-loading">${linksAllData.length ? 'Ningún link coincide con los filtros.' : 'No hay links guardados todavía.'}</div>`;
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'infra-grid';
+  for (const link of visible) grid.appendChild(buildLinkCard(link));
+  c.appendChild(grid);
+}
+
+export async function loadLinks() {
+  const c = document.getElementById('links-container');
+  if (!c) return;
+  c.innerHTML = '<div class="infra-loading">Cargando links...</div>';
+  try {
+    const { links } = await get('/api/links');
+    linksAllData = links;
+    renderLinksView();
+  } catch (err) {
+    c.innerHTML = `<div class="infra-loading" style="color:var(--danger)">Error al cargar links: ${escHtml(err.message)}</div>`;
+  }
+}
+
+export function initLinks({ confirmDialog } = {}) {
+  confirmDialogRef = confirmDialog ?? null;
+
+  document.getElementById('btn-links-refresh')?.addEventListener('click', () => loadLinks());
+
+  document.querySelectorAll('.btn-links-tipo').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.btn-links-tipo').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      linksFilterTipo = btn.dataset.tipo;
+      renderLinksView();
+    });
+  });
+
+  document.querySelectorAll('.btn-links-estado').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.btn-links-estado').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      linksFilterEstado = btn.dataset.estado;
+      renderLinksView();
+    });
+  });
+
+  document.getElementById('btn-links-fav-only')?.addEventListener('click', (e) => {
+    linksFilterFavOnly = !linksFilterFavOnly;
+    e.currentTarget.classList.toggle('active', linksFilterFavOnly);
+    renderLinksView();
+  });
+}
