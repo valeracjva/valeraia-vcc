@@ -2043,7 +2043,12 @@ button { font-family: var(--font-ui); }
 }
 .btn-infra-group + .btn-infra-group { border-left: 1px solid var(--border-2); }
 .btn-infra-group:hover  { background: var(--surface-2); color: var(--text-muted); }
-.btn-infra-group.active { background: var(--accent); color: #fff; }
+.btn-infra-group.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 10px var(--accent-glow), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
 
 /* Group header entre grids */
 .infra-group { margin-bottom: 6px; }
