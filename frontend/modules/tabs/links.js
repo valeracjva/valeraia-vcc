@@ -161,6 +161,10 @@ function showLinksForm(link) {
           ]) +
         `</div>` +
         formField('Tags (separados por coma)', 'links-f-tags', tagsText, 'laravel, n8n') +
+        `<label class="form-toggle-row">` +
+          `<input type="checkbox" id="links-f-favorito"${link?.favorito ? ' checked' : ''}>` +
+          `<span class="form-toggle-label">★ Favorito</span>` +
+        `</label>` +
         `<label class="form-label" for="links-f-nota">Nota</label>` +
         `<textarea class="form-textarea" id="links-f-nota" rows="3" placeholder="Nota opcional">${escHtml(link?.nota ?? '')}</textarea>` +
         `<div class="manage-banner hidden" id="links-f-save-error"></div>` +
@@ -193,10 +197,11 @@ function showLinksForm(link) {
     const estado = document.getElementById('links-f-estado').value;
     const tags   = document.getElementById('links-f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
     const nota   = document.getElementById('links-f-nota').value.trim();
+    const favorito = document.getElementById('links-f-favorito').checked;
 
     if (!url || !titulo) return;
 
-    const body = { url, titulo, tipo, estado, tags, nota };
+    const body = { url, titulo, tipo, estado, tags, nota, favorito };
     try {
       if (isEdit) {
         await apiFetch(`/api/links/${encodeURIComponent(link.id)}`, { method: 'PATCH', body });

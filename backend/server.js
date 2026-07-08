@@ -63,6 +63,21 @@ app.use('/api/tunnel-db', tunnelDbRouter);
 app.use('/api/opsmap',    opsmapRouter);
 app.use('/api/apis',      apisRouter);
 app.use('/api/mcp',       mcpRouter);
+
+// CORS abierto solo para POST /api/links: el bookmarklet corre en el origen
+// de la pestaña que el usuario esté visitando, no en localhost. Peor caso:
+// un sitio hostil podría insertar un link falso — no puede leer nada.
+app.use('/api/links', (req, res, next) => {
+  const origin = req.headers.origin;
+  const isPostPreflight = req.method === 'OPTIONS' && req.headers['access-control-request-method'] === 'POST';
+  if (origin && req.path === '/' && (req.method === 'POST' || isPostPreflight)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  if (isPostPreflight && req.path === '/') {
+    return res.status(204).end();
+  }
+  next();
+});
 app.use('/api/links',    linksRouter);
 
 const httpServer = createServer(app);
