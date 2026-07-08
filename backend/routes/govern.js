@@ -47,6 +47,8 @@ export default function governRouter(wss) {
       return;
     }
 
+    broadcast({ type: 'job-started', jobId, script });
+
     const rl_out = createInterface({ input: child.stdout });
     const rl_err = createInterface({ input: child.stderr });
 

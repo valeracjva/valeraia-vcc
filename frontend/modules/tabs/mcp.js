@@ -172,7 +172,7 @@ function renderMcpView() {
   }
 }
 
-export async function loadMcp() {
+export async function loadMcp(manual = false) {
   const c = document.getElementById('mcp-container');
   if (!c) return;
   c.innerHTML = '<div class="infra-loading">Cargando MCPs...</div>';
@@ -442,7 +442,7 @@ function showMcpForm(mcp, container, onClose) {
 export function initMcp({ confirmDialog } = {}) {
   confirmDialogRef = confirmDialog ?? null;
 
-  document.getElementById('btn-mcp-refresh')?.addEventListener('click', () => loadMcp());
+  document.getElementById('btn-mcp-refresh')?.addEventListener('click', () => loadMcp(true));
 
   document.getElementById('btn-mcp-show-hidden')?.addEventListener('click', () => {
     localStorage.removeItem(HIDDEN_MCPS_KEY);

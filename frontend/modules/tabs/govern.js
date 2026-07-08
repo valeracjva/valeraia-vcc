@@ -1,5 +1,22 @@
 import { API_BASE } from '../core/constants.js';
 
+const governStreamSinks = new Set();
+
+function emitGovernStreamEvent(msg) {
+  for (const sink of governStreamSinks) {
+    try {
+      sink(msg);
+    } catch (err) {
+      console.error('[VCC] govern sink error:', err.message);
+    }
+  }
+}
+
+export function registerGovernStreamSink(sink) {
+  governStreamSinks.add(sink);
+  return () => governStreamSinks.delete(sink);
+}
+
 const GOVERN_SCRIPTS = [
   {
     id: 'workspace-health',
@@ -150,6 +167,7 @@ export function connectGovernWS() {
 
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
+    emitGovernStreamEvent(msg);
     if (msg.type === 'output') {
       appendOutput(msg.data);
     } else if (msg.type === 'done') {

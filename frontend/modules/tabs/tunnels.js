@@ -1,5 +1,6 @@
 import { API_BASE } from '../core/constants.js';
 import { get } from '../core/api.js';
+import { publishActivityNote } from '../core/activity-rail.js';
 import { escHtml } from '../core/dom.js';
 
 let confirmDialogRef = null;
@@ -194,6 +195,16 @@ async function toggleTunnel(port, isActive, isProd) {
     if (!ok) return;
   }
 
+  const entryId = `tunnel-${port}-${Date.now()}`;
+  publishActivityNote({
+    entryId,
+    title: `Túnel ${port}`,
+    category: 'tunnel',
+    status: 'running',
+    message: isActive ? 'cerrando túnel' : 'abriendo túnel',
+    details: [isProd ? 'preset PROD' : 'preset no PROD'],
+  });
+
   tunnelsBusy[port] = true;
   const btn = document.querySelector(`.btn-tunnel[data-port="${port}"]`);
   if (btn) { btn.disabled = true; btn.textContent = isActive ? 'Cerrando...' : 'Abriendo...'; }
@@ -212,12 +223,39 @@ async function toggleTunnel(port, isActive, isProd) {
     const data = await get('/api/tunnels/config');
     document.getElementById('tunnel-banner')?.remove();
     renderTunnels(data);
-    if (opError) showTunnelBanner(
-      isActive ? 'No se pudo cerrar el túnel' : 'No se pudo abrir el túnel — ¿VPN activa?',
-      true
-    );
+    if (opError) {
+      showTunnelBanner(
+        isActive ? 'No se pudo cerrar el túnel' : 'No se pudo abrir el túnel — ¿VPN activa?',
+        true
+      );
+      publishActivityNote({
+        entryId,
+        title: `Túnel ${port}`,
+        category: 'tunnel',
+        status: 'error',
+        message: isActive ? 'falló el cierre' : 'falló la apertura',
+        details: [isActive ? 'El backend no confirmó el cierre' : 'El backend respondió timeout o error'],
+      });
+    } else {
+      publishActivityNote({
+        entryId,
+        title: `Túnel ${port}`,
+        category: 'tunnel',
+        status: 'success',
+        message: isActive ? 'túnel cerrado' : 'túnel abierto',
+        details: [isProd ? 'preset PROD' : 'preset no PROD'],
+      });
+    }
   } catch {
     showTunnelBanner('Error al actualizar estado de túneles', true);
+    publishActivityNote({
+      entryId,
+      title: `Túnel ${port}`,
+      category: 'tunnel',
+      status: 'error',
+      message: 'no se pudo refrescar el estado',
+      details: ['Falló la recarga de /api/tunnels/config'],
+    });
     const b = document.querySelector(`.btn-tunnel[data-port="${port}"]`);
     if (b) { b.disabled = false; b.textContent = isActive ? 'Cerrar' : 'Abrir'; }
   }

@@ -1,5 +1,6 @@
 import { API_BASE } from '../core/constants.js';
 import { get } from '../core/api.js';
+import { publishActivityNote } from '../core/activity-rail.js';
 import { buildAccordion, escHtml } from '../core/dom.js';
 
 // === M10 — SSL ===
@@ -266,15 +267,48 @@ function renderSSLMonitor(data) {
 
 export async function loadSSL(force = false) {
   const btn = document.getElementById('btn-ssl-refresh');
+  const entryId = force ? `ssl-refresh-${Date.now()}` : null;
+  if (entryId) {
+    publishActivityNote({
+      entryId,
+      title: 'SSL / Dominios',
+      category: 'refresh',
+      status: 'running',
+      message: 'verificación manual iniciada',
+      details: ['Chequeando certificados desde /api/ssl?force=1'],
+    });
+  }
   btn.disabled = true;
   document.getElementById('ssl-container').innerHTML =
     '<div class="ssl-loading">Verificando certificados...</div>';
   try {
     sslData = await get(`/api/ssl${force ? '?force=1' : ''}`);
     renderSSLMonitor(sslData);
+    if (entryId) {
+      const total = sslData?.domains?.length ?? 0;
+      const crit = (sslData?.summary?.crit ?? 0) + (sslData?.summary?.expired ?? 0);
+      publishActivityNote({
+        entryId,
+        title: 'SSL / Dominios',
+        category: 'refresh',
+        status: 'success',
+        message: 'verificación completada',
+        details: [`${total} dominio(s) revisado(s)`, `${crit} alerta(s) críticas o vencidas`],
+      });
+    }
   } catch {
     document.getElementById('ssl-container').innerHTML =
       '<div class="ssl-loading" style="color:var(--red)">Error al verificar certificados</div>';
+    if (entryId) {
+      publishActivityNote({
+        entryId,
+        title: 'SSL / Dominios',
+        category: 'refresh',
+        status: 'error',
+        message: 'falló la verificación manual',
+        details: ['El request a /api/ssl?force=1 no devolvió datos válidos'],
+      });
+    }
   } finally {
     btn.disabled = false;
   }

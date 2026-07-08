@@ -75,7 +75,7 @@ function renderApis(data) {
   }
 }
 
-export async function loadApis() {
+export async function loadApis(manual = false) {
   const container = document.getElementById('apis-container');
   if (!container) return;
   container.innerHTML = '<div class="apis-loading">Verificando catálogo de APIs...</div>';
@@ -88,5 +88,5 @@ export async function loadApis() {
 }
 
 export function initApis() {
-  document.getElementById('btn-apis-refresh')?.addEventListener('click', () => loadApis());
+  document.getElementById('btn-apis-refresh')?.addEventListener('click', () => loadApis(true));
 }

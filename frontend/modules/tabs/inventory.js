@@ -1,4 +1,5 @@
 import { get, apiFetch } from '../core/api.js';
+import { publishActivityNote } from '../core/activity-rail.js';
 import { buildAccordion, escHtml, formField, formPasswordField, formSelect, showManageBanner } from '../core/dom.js';
 
 // === M4 — Inventario Infra ===
@@ -870,16 +871,29 @@ function getMonitoredServerIds() {
 
 export async function loadMetrics(force = false) {
   const btn = document.getElementById('btn-infra-metrics-refresh');
+  const ids = getMonitoredServerIds();
+  const entryId = force ? `inventory-metrics-${Date.now()}` : null;
+  const statuses = [];
+  if (entryId) {
+    publishActivityNote({
+      entryId,
+      title: 'Inventario / Métricas',
+      category: 'metrics',
+      status: 'running',
+      message: 'refresh manual iniciado',
+      details: [`${ids.length} host(s) monitoreado(s) en consulta`],
+    });
+  }
   if (btn) { btn.disabled = true; btn.textContent = '↻ …'; }
 
   setMetricsLoadingState();
 
   try {
-    const ids = getMonitoredServerIds();
     await Promise.allSettled(ids.map(async (id) => {
       try {
         const metric = await get(`/api/infra-health/${encodeURIComponent(id)}${force ? '?force=1' : ''}`);
         applyMetrics(metric);
+        statuses.push(metric?.status || 'ok');
       } catch (err) {
         const prev = infraMetricsCache[id];
         if (prev?.status === 'ok' && prev.cpu && prev.ram && prev.disk) {
@@ -890,6 +904,7 @@ export async function loadMetrics(force = false) {
             history: prev.history || [],
             lastGood: prev,
           });
+          statuses.push('stale');
         } else {
           applyMetrics({
             serverId: id,
@@ -897,11 +912,35 @@ export async function loadMetrics(force = false) {
             error: err.message,
             history: prev?.history || [],
           });
+          statuses.push('unreachable');
         }
       }
     }));
+    if (entryId) {
+      const ok = statuses.filter((status) => status === 'ok').length;
+      const stale = statuses.filter((status) => status === 'stale').length;
+      const down = statuses.filter((status) => status === 'unreachable').length;
+      publishActivityNote({
+        entryId,
+        title: 'Inventario / Métricas',
+        category: 'metrics',
+        status: down ? 'error' : 'success',
+        message: down ? 'refresh manual con hosts sin acceso' : 'refresh manual completado',
+        details: [`ok ${ok} · stale ${stale} · down ${down}`, `${ids.length} host(s) procesado(s)`],
+      });
+    }
   } catch (err) {
     setMetricsFetchError(err.message);
+    if (entryId) {
+      publishActivityNote({
+        entryId,
+        title: 'Inventario / Métricas',
+        category: 'metrics',
+        status: 'error',
+        message: 'falló el refresh manual',
+        details: [err.message],
+      });
+    }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '↻ Métricas'; }
   }

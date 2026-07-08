@@ -267,7 +267,7 @@ function renderOpsMap(data) {
   if (subtitle && current) subtitle.textContent = `${current.projectId}/${current.environment} · ${current.riskLevel ?? 'bajo'} · ${data.links?.length ?? 0} relaciones`;
 }
 
-export async function loadOpsMap() {
+export async function loadOpsMap(manual = false) {
   const container = document.getElementById('opsmap-container');
   if (!container) return;
   container.innerHTML = '<div class="opsmap-loading">Sincronizando mapa operativo...</div>';
@@ -281,7 +281,7 @@ export async function loadOpsMap() {
 }
 
 export function initOpsMap() {
-  document.getElementById('btn-opsmap-refresh')?.addEventListener('click', () => loadOpsMap());
+  document.getElementById('btn-opsmap-refresh')?.addEventListener('click', () => loadOpsMap(true));
   document.getElementById('opsmap-incident-toggle')?.addEventListener('change', (e) => {
     incidentMode = e.target.checked;
     if (!incidentMode) {
