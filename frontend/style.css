@@ -1949,14 +1949,14 @@ button { font-family: var(--font-ui); }
 }
 
 .metric-spark {
-  width: 28px;
-  height: 14px;
+  width: 34px;
+  height: 17px;
   flex-shrink: 0;
-  opacity: 0.9;
-  transition: opacity 0.2s ease;
+  opacity: 1;
+  transition: transform 0.2s ease;
 }
 
-.metric-row:hover .metric-spark { opacity: 1; }
+.metric-row:hover .metric-spark { transform: scale(1.08); }
 
 .metric-disk-hide {
   background: transparent;

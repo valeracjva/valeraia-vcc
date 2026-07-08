@@ -648,7 +648,7 @@ function fmtGB(mb) {
 
 function sparklineSvg(values, color) {
   if (!values || values.length < 2) return '';
-  const w = 28, h = 14;
+  const w = 34, h = 17;
   const max = Math.max(100, ...values);
   const step = w / (values.length - 1);
   const linePts = values.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`);
