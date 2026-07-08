@@ -16,7 +16,7 @@
 - `estado`: `Pendiente | Revisado | Implementar | Descartado` (default `Pendiente`).
 - Colores de estado por variable CSS existente: Pendiente = `var(--text-faint)`, Revisado = `var(--info)`, Implementar = `var(--warning)`, Descartado = `var(--danger)`.
 - Puerto del backend fijo en `SERVER.port = 8080` (`backend/config.js:27`) — el bookmarklet apunta a ese puerto hardcodeado, igual que el resto del proyecto no maneja puertos dinámicos.
-- Sin tests automatizados nuevos: el backend de VCC no tiene suite de tests (0 archivos `*.test.js` en `backend/`); verificación vía `curl` manual, consistente con el resto de los routers del proyecto. Esta decisión ya está en el spec aprobado.
+- Sin tests automatizados nuevos: el router de links.js sigue el estilo de import directo de `inventory.js`/`ssl.js` (sin tests), no el estilo de factory con inyección de dependencias de `projects.js`/`registry.js` (que sí tiene tests) — verificación vía `curl` manual, consistente con el estilo de router elegido. Esta decisión ya está en el spec aprobado.
 - Spec de referencia: `docs/superpowers/specs/2026-07-08-links-inventario-design.md`.
 
 ---

@@ -13,6 +13,7 @@ import { initTunnels, loadTunnels, updateTunnelDots } from './modules/tabs/tunne
 import { initOpsMap, loadOpsMap } from './modules/tabs/opsmap.js';
 import { initMcp, loadMcp } from './modules/tabs/mcp.js';
 import { initInventory, loadInventory, loadMetrics, METRICS_INTERVAL_MS } from './modules/tabs/inventory.js';
+import { initLinks, loadLinks } from './modules/tabs/links.js';
 
 const RISK_ICONS = { bajo: '▲', medio: '▲▲', alto: '▲▲▲', crítico: '⬛' };
 
@@ -151,6 +152,7 @@ async function init() {
       if (tab === 'opsmap') loadOpsMap();
       if (tab === 'apis') loadApis();
       if (tab === 'mcp') loadMcp();
+      if (tab === 'links') loadLinks();
     },
   });
   initProjects({ onUpdate: update, confirmDialog });
@@ -161,6 +163,7 @@ async function init() {
   initOpsMap();
   initApis();
   initMcp({ confirmDialog });
+  initLinks({ confirmDialog });
   initJsonModal();
   registerGovernStreamSink(handleActivityEvent);
   connectGovernWS();
