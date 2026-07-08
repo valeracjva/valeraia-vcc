@@ -3741,3 +3741,12 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .json-modal-error { font-size: 0.72rem; color: var(--danger); flex: 1; }
 .json-modal-error.hidden { display: none; }
 .json-modal-actions { display: flex; gap: 8px; }
+
+@keyframes metric-value-flash {
+  0%   { filter: brightness(1); }
+  30%  { filter: brightness(1.9); }
+  100% { filter: brightness(1); }
+}
+.metric-bar-fill.metric-flash {
+  animation: metric-value-flash 0.6s ease-out;
+}

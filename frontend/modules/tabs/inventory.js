@@ -689,6 +689,29 @@ function metricBar(label, pct, absText, sparkValues, hideCtx) {
   );
 }
 
+// Compara CPU/RAM contra el snapshot anterior y agrega un pulso de brillo breve
+// a las barras que cambiaron -- da sensacion de dato vivo sin animar constantemente
+// las que estan quietas. Disco no se compara (su "worst" puede cambiar de disco
+// entre refreshes, no solo de valor, y generaria flashes falsos).
+function flashChangedBars(metricsEl, prevBase, newBase) {
+  if (!prevBase || prevBase.status !== 'ok' || !prevBase.cpu || !prevBase.ram) return;
+  if (!newBase || !newBase.cpu || !newBase.ram) return;
+  const rows = metricsEl.querySelectorAll('.metric-row');
+  const changed = [
+    prevBase.cpu.pct !== newBase.cpu.pct,
+    prevBase.ram.pct !== newBase.ram.pct,
+  ];
+  rows.forEach((row, i) => {
+    if (i > 1) return; // solo CPU (0) y RAM (1) -- DSK excluido por el motivo de arriba
+    if (!changed[i]) return;
+    const fill = row.querySelector('.metric-bar-fill');
+    if (!fill) return;
+    fill.classList.remove('metric-flash');
+    void fill.offsetWidth; // fuerza reflow para poder re-disparar la animación si ya estaba
+    fill.classList.add('metric-flash');
+  });
+}
+
 // El desglose completo por disco vive dentro del acordeon (apps/dominios/notas), no en la vista
 // principal de la card -- ahi solo se muestra una fila agregada (peor caso). Evita que 5 barras
 // casi identicas sean el primer impacto visual de la card; el detalle sigue a un click de distancia.
@@ -728,6 +751,7 @@ function updateDiskDetails(serverId, allDisks, hiddenLabels, worstLabel) {
 }
 
 function applyMetrics(m) {
+  const prev = infraMetricsCache[m.serverId];
   infraMetricsCache[m.serverId] = m;
 
   const base = m.status === 'stale' ? m.lastGood : m;
@@ -807,6 +831,7 @@ function applyMetrics(m) {
       else card.appendChild(metricsEl);
     }
     metricsEl.innerHTML = metricsHtml;
+    flashChangedBars(metricsEl, prev, base);
   }
 
   // Vista listado
