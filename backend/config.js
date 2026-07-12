@@ -30,7 +30,9 @@ export const SERVER = {
 };
 
 export const SCRIPTS = {
-  'workspace-health': 'scripts/workspace/governance/workspace-health.ps1',
+  'workspace-health': process.env.VALERAIA_KERNEL
+    ? path.join(process.env.VALERAIA_KERNEL, 'core', 'health', 'workspace-health.ps1')
+    : 'scripts/workspace/governance/workspace-health.ps1',
   'compile-agents':   'scripts/workspace/governance/compile-agents-md.ps1',
   'web-context':      'scripts/workspace/governance/generate-web-context.ps1',
   'sync-status':      'scripts/workspace/sync/sync-status.ps1',

@@ -31,7 +31,9 @@ export default function governRouter(wss) {
     activeJob = jobId;
     res.status(202).json({ jobId });
 
-    const scriptPath = path.join(WORKSPACE_ROOT, SCRIPTS[script]);
+    const scriptPath = path.isAbsolute(SCRIPTS[script])
+      ? SCRIPTS[script]
+      : path.join(WORKSPACE_ROOT, SCRIPTS[script]);
     let child;
     try {
       const escaped = scriptPath.replace(/'/g, "''");
