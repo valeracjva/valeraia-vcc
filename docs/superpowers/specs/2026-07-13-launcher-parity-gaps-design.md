@@ -1,4 +1,4 @@
-# VCC — Paridad funcional con el launcher PowerShell (3 gaps)
+# VCC — Paridad funcional con el launcher PowerShell (4 gaps)
 
 ## Contexto
 
@@ -9,12 +9,18 @@ migrarlo al kernel — su reemplazo es VCC, decisión ya vigente desde ADR-009 (
 Antes de retirarlo hay que cerrar los gaps funcionales reales que el launcher cubre y VCC
 todavía no. Se auditó el launcher completo (`scripts/launcher-infra/launch-ai-workspace.ps1`,
 904 líneas) contra el estado actual de VCC (`D:\Workspace-Repos\workspace-ui`) y se
-encontraron 3 gaps reales — el resto de las funciones del launcher (túneles, inventario,
-health check SSH) ya están cubiertas por VCC con superset de funcionalidad.
+encontraron 4 gaps reales — el resto de las funciones del launcher (túneles, inventario,
+health check SSH, abrir VS Code) ya están cubiertas por VCC con superset de funcionalidad.
 
-**Fuera de alcance explícito:** abrir VS Code o Claude CLI desde el launcher no se migra —
-es un límite real navegador-vs-escritorio (VCC es una página web, no puede spawnear ventanas
-de escritorio del sistema operativo del operador). Queda como acción manual documentada.
+**Corrección post-exploración:** se asumió inicialmente que abrir VS Code/Claude CLI/una
+terminal SSH quedaba fuera de alcance por un límite navegador-vs-escritorio. Es falso: el
+backend de VCC (Node) corre en la propia PC de Carlos, no en un servidor remoto — **ya**
+spawnea procesos de escritorio reales (`backend/routes/projects.js:272`,
+`POST /:id/environments/:env/open-vscode` hace `spawn('code', ['--remote', ...], {detached:
+true})`, con botón real en el frontend). No hay límite técnico. Por eso el "Gap 3" original
+(ssh/rdp de FortiGate) se resuelve con el mismo mecanismo, y se agrega un "Gap 4" nuevo
+(abrir Claude CLI) que en el launcher original SÍ existía (`Start-ClaudeCLI`) y no se había
+detectado en la primera pasada de la auditoría.
 
 ## Gap 1 — Guardar sesión
 
@@ -85,17 +91,40 @@ Proyectos (`frontend/modules/tabs/projects.js:657`), pero solo vuelca el `access
 como JSON crudo de solo lectura (`<pre>`).
 
 De los dos métodos presentes en `fortigate-nre` (`web`, `ssh`): `web` es un link trivial de
-abrir en el navegador. `ssh` tiene la misma limitación navegador-vs-escritorio que VS Code/
-Claude CLI (fuera de alcance, ver Contexto) — no se automatiza.
+abrir en el navegador. `ssh` se resuelve igual que el launcher original (`Start-InfraAction`,
+caso `"ssh"`): spawnear una terminal local con el comando `ssh user@host`.
 
 ### Diseño
 
-- Sin cambios de backend — el dato ya viaja tal cual en `GET /api/projects`.
-- En `frontend/modules/tabs/projects.js`, reemplazar el bloque `<pre>${JSON crudo}</pre>` por
-  un render estructurado de `project.access`:
+- **Backend:** nueva ruta `POST /api/projects/:id/open-ssh` (agregada a
+  `backend/routes/projects.js`, mismo archivo que ya tiene `open-vscode`). Body:
+  `{ host, user }` (vienen del `access` del proyecto, ya validado por `validateProject` al
+  guardarse). Valida `host`/`user` contra el mismo patrón de caracteres seguros que ya usa
+  `open-vscode` (`/^[A-Za-z0-9._-]+$/`). Spawnea `pwsh -NoExit -Command "ssh ${user}@${host}"`
+  (`detached: true, stdio: 'ignore'`, mismo patrón que `open-vscode`). Responde `{ ok: true }`.
+- **Frontend:** en `frontend/modules/tabs/projects.js`, reemplazar el bloque
+  `<pre>${JSON crudo}</pre>` por un render estructurado de `project.access`:
   - método `web` → `<a href="${url}" target="_blank" rel="noopener">${label || url}</a>`.
-  - método `ssh`/`rdp` → texto plano `${user}@${host}` con nota visual "acción manual" (sin
-    botón, sin intento de automatizar).
+  - método `ssh`/`rdp` → botón "Conectar SSH" que llama a `POST /api/projects/:id/open-ssh`
+    (rdp queda documentado como manual si aparece — hoy no hay ningún registro con `rdp`, no
+    se construye soporte especulativo para un caso sin dato real, YAGNI).
+
+## Gap 4 — Abrir Claude CLI
+
+El launcher (`Start-ClaudeCLI`) abre una terminal local con `claude` corriendo, con directorio
+de trabajo en la raíz de `AI-Workspace` (no en el remotePath del ambiente — a diferencia de
+VS Code, Claude Code opera sobre el propio AI-Workspace). VCC no tiene equivalente.
+
+### Diseño
+
+- **Backend:** nueva ruta `POST /api/projects/open-claude-cli` (sin `:id`, ya que no depende
+  del proyecty/ambiente — mismo criterio que el launcher, que la ofrece como acción global
+  `[C]` además de por-ambiente). Spawnea `pwsh -NoExit -Command "Set-Location '$WORKSPACE_ROOT';
+  claude"` (`detached: true, stdio: 'ignore'`, mismo patrón que `open-vscode`/`open-ssh`).
+  Responde `{ ok: true }`.
+- **Frontend:** botón "Abrir Claude CLI" en la tab "Sesión actual" (Briefing) — mismo lugar
+  donde vive el botón "Guardar sesión" del Gap 1, ya que ambas son acciones sobre la sesión
+  activa de trabajo.
 
 ## Testing
 
@@ -110,16 +139,21 @@ precedente):
   nuevo).
 - **Gap 2:** test unitario del parser de `category:` en frontmatter (casos: con categoría, sin
   categoría, archivo vacío). Verificación en vivo: la tab muestra los ~20 agentes reales.
-- **Gap 3:** sin lógica nueva testeable con `node:test` (es render DOM puro). Verificación
-  visual con Playwright: la card de `fortigate-nre` muestra el link `web` clickeable y el
-  texto `ssh` sin botón.
+- **Gap 3:** test de la ruta `POST /api/projects/:id/open-ssh` con `spawnProcess` inyectado
+  (mismo patrón que ya usa `backend/test/projects-routes.test.js` para `open-vscode`: fake que
+  registra la llamada, sin spawnear un proceso real en el test) — casos: host/user válidos
+  (200, spawn llamado con los args esperados), host con caracteres inválidos (400, spawn no
+  llamado). Verificación visual con Playwright: la card de `fortigate-nre` muestra el link
+  `web` clickeable y el botón "Conectar SSH".
+- **Gap 4:** mismo patrón que Gap 3 para `POST /api/projects/open-claude-cli` con
+  `spawnProcess` inyectado. Verificación en vivo: click en "Abrir Claude CLI" abre una
+  terminal nueva con `claude` corriendo en `AI-Workspace`.
 
 No se agrega infraestructura de testing nueva.
 
 ## Fuera de alcance (explícito)
 
-- Abrir VS Code o Claude CLI desde VCC (límite navegador-vs-escritorio, ver Contexto).
-- Automatizar conexiones `ssh`/`rdp` desde el navegador (mismo límite, ver Gap 3).
+- Automatizar `rdp` (sin dato real en el registry hoy — YAGNI, ver Gap 3).
 - Cache de `/api/agents` (20 archivos chicos, no justifica la complejidad — YAGNI).
 - Vistas de categoría separadas (Desarrollo/Infraestructura/Monitoreo/Chatbot) tipo el
   launcher — la tab Proyectos de VCC ya muestra `category` como texto en cada card y agrupa
