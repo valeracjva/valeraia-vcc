@@ -8,6 +8,36 @@ import path from 'node:path';
 import express from 'express';
 
 import { createSessionsRouter } from '../routes/sessions.js';
+import { fechaActual } from '../routes/sessions.js';
+
+test('fechaActual() retorna hora local en formato YYYY-MM-DD HH:mm', () => {
+  const result = fechaActual();
+
+  // Verificar formato correcto
+  assert.match(result, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+
+  // Verificar que NO es UTC (no debería ser igual a toISOString().slice(0,16).replace('T',' '))
+  const utcFormat = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
+  // Solo assert que difiere si la zona horaria local no es UTC
+  const offset = new Date().getTimezoneOffset();
+  if (offset !== 0) {
+    // Si hay offset (no es UTC), fechaActual debe diferir de UTC
+    assert.notEqual(result, utcFormat, 'fechaActual debe retornar hora local, no UTC');
+  }
+
+  // Verificar que la fecha esté razonablemente cerca a ahora
+  const [year, month, day, hours, mins] = result.match(/(\d+)/g).map(Number);
+  const now = new Date();
+  assert.equal(year, now.getFullYear());
+  assert.equal(month, now.getMonth() + 1);
+  assert.equal(day, now.getDate());
+  // La hora y minutos pueden coincidir o estar a un minuto de diferencia
+  const expectedHours = now.getHours();
+  const expectedMins = now.getMinutes();
+  assert(hours === expectedHours || hours === expectedHours + 1 || hours === expectedHours - 1);
+  assert(mins === expectedMins || mins === expectedMins + 1 || mins === expectedMins - 1);
+});
 
 function registryFixture() {
   return {

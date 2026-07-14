@@ -22,8 +22,10 @@ function sendError(res, error) {
   res.status(status).json({ error: error.message || 'Error interno del servidor' });
 }
 
-function fechaActual() {
-  return new Date().toISOString().slice(0, 16).replace('T', ' ');
+export function fechaActual() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function createSessionsRouter({
