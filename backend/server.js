@@ -25,6 +25,7 @@ import apisRouter      from './routes/apis.js';
 import mcpRouter       from './routes/mcp.js';
 import linksRouter     from './routes/links.js';
 import sessionsRouter  from './routes/sessions.js';
+import agentsRouter    from './routes/agents.js';
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use('/api/infra-health', metricsRouter);
 app.use('/api/runtime',   runtimeRouter);
 app.use('/api/tunnel-db', tunnelDbRouter);
 app.use('/api/opsmap',    opsmapRouter);
+app.use('/api/agents',    agentsRouter);
 app.use('/api/apis',      apisRouter);
 app.use('/api/mcp',       mcpRouter);
 app.use('/api/sessions',   sessionsRouter);
