@@ -17,6 +17,7 @@ export const PATHS = {
   registry:       path.join(WORKSPACE_ROOT, 'global', 'projects-registry.json'),
   currentProject: path.join(WORKSPACE_ROOT, 'runtime', 'current-project.json'),
   recentProjects: path.join(WORKSPACE_ROOT, 'runtime', 'recent-projects.json'),
+  sessionsRoot:   path.join(WORKSPACE_ROOT, 'sessions'),
   sslWatch:        path.join(VCC_DATA, 'ssl-watch.json'),
   tunnelsConfig:   path.join(VCC_DATA, 'tunnels-config.json'),
   serverInventory: path.join(WORKSPACE_ROOT, 'global', 'servers', 'SERVER_INVENTORY.md'),
@@ -34,6 +35,9 @@ export const SCRIPTS = {
     ? path.join(process.env.VALERAIA_KERNEL, 'core', 'health', 'workspace-health.ps1')
     : 'scripts/workspace/governance/workspace-health.ps1',
   'compile-agents':   'scripts/workspace/governance/compile-agents-md.ps1',
+  'build-ai-context': process.env.VALERAIA_KERNEL
+    ? path.join(process.env.VALERAIA_KERNEL, 'core', 'governance', 'build-ai-context.ps1')
+    : 'scripts/workspace/context/build-ai-context.ps1',
   'web-context':      'scripts/workspace/governance/generate-web-context.ps1',
   'sync-status':      'scripts/workspace/sync/sync-status.ps1',
   'cierre':           'scripts/workspace/governance/close-session.ps1',

@@ -24,6 +24,7 @@ import opsmapRouter    from './routes/opsmap.js';
 import apisRouter      from './routes/apis.js';
 import mcpRouter       from './routes/mcp.js';
 import linksRouter     from './routes/links.js';
+import sessionsRouter  from './routes/sessions.js';
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use('/api/tunnel-db', tunnelDbRouter);
 app.use('/api/opsmap',    opsmapRouter);
 app.use('/api/apis',      apisRouter);
 app.use('/api/mcp',       mcpRouter);
+app.use('/api/sessions',   sessionsRouter);
 
 // CORS abierto solo para POST /api/links: el bookmarklet corre en el origen
 // de la pestaña que el usuario esté visitando, no en localhost. Peor caso:
