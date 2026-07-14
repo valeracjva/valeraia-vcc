@@ -1,4 +1,6 @@
 import { escHtml } from '../core/dom.js';
+import { apiFetch } from '../core/api.js';
+import { showManageBanner } from '../core/dom.js';
 
 export function parsePendientesDetail(sections) {
   const raw = sections['Pendientes'] ?? '';
@@ -13,9 +15,32 @@ export function parsePendientesDetail(sections) {
   return items;
 }
 
-export function renderBriefing(sections) {
+function ensureShell() {
   const panel = document.getElementById('tab-briefing');
+  if (!panel) return null;
+  if (!panel.querySelector('#briefing-dynamic')) {
+    panel.innerHTML =
+      `<div id="briefing-dynamic"></div>` +
+      `<div class="briefing-card briefing-full" id="briefing-actions-card">` +
+      `<div class="briefing-card-label">ACCIONES DE SESIÓN</div>` +
+      `<textarea class="form-input" id="briefing-resumen-input" rows="3" placeholder="Punto de reanudación (qué falta, dónde seguir)…"></textarea>` +
+      `<div class="briefing-actions-row">` +
+      `<button class="btn btn-success" id="briefing-save-session">Guardar sesión</button>` +
+      `<button class="btn btn-ghost" id="briefing-open-claude">Abrir Claude CLI</button>` +
+      `</div>` +
+      `<div class="manage-banner hidden" id="briefing-session-banner"></div>` +
+      `</div>`;
+  }
+  return panel;
+}
+
+export function renderBriefing(sections, project = { id: null, environment: null }) {
+  const panel = ensureShell();
   if (!panel) return;
+  panel.dataset.projectId = project.id ?? '';
+  panel.dataset.environment = project.environment ?? '';
+
+  const dynamic = panel.querySelector('#briefing-dynamic');
 
   const updated = (sections['Metadata'] ?? '').match(/Actualizado:\s*(.+)/)?.[1]?.trim() ?? '—';
   const nextStep = (sections['Proximo paso seguro'] ?? '').trim();
@@ -53,7 +78,7 @@ export function renderBriefing(sections) {
        <div class="brief-resumen-body hidden" id="${resumenId}">${escHtml(resumen)}</div>`
     : '';
 
-  panel.innerHTML =
+  dynamic.innerHTML =
     `<div class="briefing-header">` +
       `<div class="briefing-header-title">Sesión actual</div>` +
       `<div class="briefing-header-desc">Contexto de la sesión IA activa — leído del handover generado al iniciar o cerrar sesión.</div>` +
@@ -84,4 +109,54 @@ export function renderBriefing(sections) {
     (resumenHtml ? `<div class="briefing-card briefing-full">${resumenHtml}</div>` : '') +
 
     `</div>`;
+}
+
+async function saveSession(btn) {
+  const panel = document.getElementById('tab-briefing');
+  const textarea = document.getElementById('briefing-resumen-input');
+  const projectId = panel?.dataset.projectId;
+  const environment = panel?.dataset.environment;
+
+  if (!projectId || !environment) {
+    showManageBanner('briefing-session-banner', 'No hay proyecto/ambiente activo — no se puede guardar.', true);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+  try {
+    const data = await apiFetch(`/api/sessions/${encodeURIComponent(projectId)}/save`, {
+      method: 'POST',
+      body: { environment, resumen: textarea.value },
+    });
+    if (data.skipped) {
+      showManageBanner('briefing-session-banner', 'Sin cambios (resumen vacío).');
+    } else {
+      showManageBanner('briefing-session-banner', `Sesión guardada. Bundle: ${data.bundlePath}`);
+      textarea.value = '';
+    }
+  } catch (err) {
+    showManageBanner('briefing-session-banner', `Error al guardar: ${err.message}`, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar sesión';
+  }
+}
+
+async function openClaudeCli(btn) {
+  btn.disabled = true;
+  btn.textContent = 'Abriendo…';
+  try {
+    await apiFetch('/api/projects/open-claude-cli', { method: 'POST' });
+  } catch { /* silencioso — la terminal puede haberse abierto igual */ }
+  setTimeout(() => {
+    btn.textContent = 'Abrir Claude CLI';
+    btn.disabled = false;
+  }, 1500);
+}
+
+export function initBriefing() {
+  ensureShell();
+  document.getElementById('briefing-save-session')?.addEventListener('click', (e) => saveSession(e.target));
+  document.getElementById('briefing-open-claude')?.addEventListener('click', (e) => openClaudeCli(e.target));
 }

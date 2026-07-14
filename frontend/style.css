@@ -4033,3 +4033,9 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .metric-bar-fill.metric-flash {
   animation: metric-value-flash 0.6s ease-out;
 }
+
+.briefing-actions-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}

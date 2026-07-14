@@ -3,7 +3,7 @@ import { get, apiFetch } from './modules/core/api.js';
 import { initActivityRail, handleActivityEvent } from './modules/core/activity-rail.js';
 import { buildAccordion, escHtml, formField, formSelect, showManageBanner } from './modules/core/dom.js';
 import { initSidebar, initTabs, initTheme, tickFooterClock, confirmDialog, openJsonModal, initJsonModal } from './modules/core/shell.js';
-import { renderBriefing } from './modules/tabs/briefing.js';
+import { initBriefing, renderBriefing } from './modules/tabs/briefing.js';
 import { renderCockpit } from './modules/tabs/cockpit.js';
 import { initGovern, connectGovernWS, registerGovernStreamSink } from './modules/tabs/govern.js';
 import { initApis, loadApis } from './modules/tabs/apis.js';
@@ -126,7 +126,10 @@ async function update() {
     renderPendientes(status.pendientes.handover);
     updateTunnelDots(tunnels);
     renderCockpit(status, handover.sections, tunnels, runtime, { onActivateProject: setActiveProject });
-    renderBriefing(handover.sections);
+    renderBriefing(handover.sections, {
+      id: nextActiveProjectId,
+      environment: runtime?.current?.environment ?? project.env,
+    });
     showError(false);
 
     // Refrescar tab si está activo
@@ -156,6 +159,7 @@ async function init() {
     },
   });
   initProjects({ onUpdate: update, confirmDialog });
+  initBriefing();
   initGovern();
   initSSL();
   initTunnels({ confirmDialog, openJsonModal });
