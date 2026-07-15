@@ -395,6 +395,22 @@ async function openVSCode(projectId, envName, btn) {
   }, 1500);
 }
 
+async function openSsh(projectId, host, user, btn) {
+  btn.disabled = true;
+  btn.textContent = '⬡ conectando…';
+  try {
+    await fetch(`${API_BASE}/api/projects/${projectId}/open-ssh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, user }),
+    });
+  } catch { /* silencioso — la terminal puede haberse abierto igual */ }
+  setTimeout(() => {
+    btn.textContent = `⬡ Conectar SSH (${user}@${host})`;
+    btn.disabled = false;
+  }, 1500);
+}
+
 export async function setActiveProject(projectId, envName, btn) {
   const wasActive = btn.dataset.active === 'true';
   if (wasActive) return;
@@ -657,8 +673,28 @@ function renderProjectEditor(project) {
   if (project.access && project.environments === undefined) {
     const access = document.createElement('div');
     access.className = 'project-access-readonly';
-    access.innerHTML = '<div class="project-subtitle">ACCESS · SOLO LECTURA</div>' +
-      `<pre>${escHtml(JSON.stringify(project.access, null, 2))}</pre>`;
+    access.innerHTML = '<div class="project-subtitle">ACCESOS</div>';
+    for (const acc of project.access) {
+      const row = document.createElement('div');
+      row.className = 'env-block-field';
+      if (acc.method === 'web') {
+        row.innerHTML =
+          `<span class="env-field-label">web</span>` +
+          `<a class="env-field-value mono" href="${escHtml(acc.url)}" target="_blank" rel="noopener">${escHtml(acc.label || acc.url)}</a>`;
+      } else if (acc.method === 'ssh') {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-ghost btn-project-secondary';
+        btn.textContent = `⬡ Conectar SSH (${acc.user}@${acc.host})`;
+        btn.addEventListener('click', () => openSsh(project.id, acc.host, acc.user, btn));
+        row.innerHTML = `<span class="env-field-label">ssh</span>`;
+        row.appendChild(btn);
+      } else {
+        row.innerHTML =
+          `<span class="env-field-label">${escHtml(acc.method)}</span>` +
+          `<span class="env-field-value mono">${escHtml(acc.host || acc.url || '')}</span>`;
+      }
+      access.appendChild(row);
+    }
     content.appendChild(access);
   } else {
     const environmentsHeader = document.createElement('div');
