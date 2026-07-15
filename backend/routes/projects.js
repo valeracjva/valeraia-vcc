@@ -297,6 +297,36 @@ export function createProjectsRouter({
     }
   });
 
+  router.post('/:id/open-ssh', async (req, res) => {
+    try {
+      const { host, user } = req.body ?? {};
+      requireString(host, 'host');
+      requireString(user, 'user');
+      if (!/^[A-Za-z0-9._-]+$/.test(host)) throw new HttpError(400, 'host contiene caracteres inválidos');
+      if (!/^[A-Za-z0-9._-]+$/.test(user)) throw new HttpError(400, 'user contiene caracteres inválidos');
+
+      const child = spawnProcess(
+        'pwsh',
+        ['-NoExit', '-Command', `ssh ${user}@${host}`],
+        { detached: true, stdio: 'ignore' },
+      );
+      child.unref();
+      res.json({ ok: true });
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.post('/open-claude-cli', (req, res) => {
+    const child = spawnProcess(
+      'pwsh',
+      ['-NoExit', '-Command', `Set-Location '${WORKSPACE_ROOT}'; claude`],
+      { detached: true, stdio: 'ignore' },
+    );
+    child.unref();
+    res.json({ ok: true });
+  });
+
   return router;
 }
 

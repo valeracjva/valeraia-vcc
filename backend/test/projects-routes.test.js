@@ -40,7 +40,7 @@ function registryFixture() {
   };
 }
 
-async function withApi(run, { currentProjectId = 'alpha', handoverProjectId = 'alpha' } = {}) {
+async function withApi(run, { currentProjectId = 'alpha', handoverProjectId = 'alpha', spawnProcess } = {}) {
   const directory = await mkdtemp(path.join(tmpdir(), 'vcc-project-routes-'));
   const registryPath = path.join(directory, 'projects-registry.json');
   const currentProjectPath = path.join(directory, 'current-project.json');
@@ -53,7 +53,7 @@ async function withApi(run, { currentProjectId = 'alpha', handoverProjectId = 'a
   const app = express();
   app.use(express.json());
   app.use('/api/registry', createRegistryRouter({ store }));
-  app.use('/api/projects', createProjectsRouter({ store, currentProjectPath, handoverPath }));
+  app.use('/api/projects', createProjectsRouter({ store, currentProjectPath, handoverPath, spawnProcess }));
 
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -303,6 +303,44 @@ test('rechaza openScript con path traversal', async () => {
 
     assert.equal(response.status, 400);
   });
+});
+
+test('POST /api/projects/:id/open-ssh spawnea ssh con host/user válidos', async () => {
+  const calls = [];
+  const spawnProcess = (...args) => { calls.push(args); return { unref() {} }; };
+  await withApi(async ({ request }) => {
+    const { response } = await request('POST', '/api/projects/alpha/open-ssh', {
+      host: '172.16.100.1',
+      user: 'cvalera',
+    });
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0][1].join(' '), /ssh cvalera@172\.16\.100\.1/);
+  }, { spawnProcess });
+});
+
+test('POST /api/projects/:id/open-ssh rechaza host con caracteres inválidos', async () => {
+  const calls = [];
+  const spawnProcess = (...args) => { calls.push(args); return { unref() {} }; };
+  await withApi(async ({ request }) => {
+    const { response } = await request('POST', '/api/projects/alpha/open-ssh', {
+      host: '172.16.100.1; rm -rf /',
+      user: 'cvalera',
+    });
+    assert.equal(response.status, 400);
+    assert.equal(calls.length, 0);
+  }, { spawnProcess });
+});
+
+test('POST /api/projects/open-claude-cli spawnea una terminal con claude', async () => {
+  const calls = [];
+  const spawnProcess = (...args) => { calls.push(args); return { unref() {} }; };
+  await withApi(async ({ request }) => {
+    const { response } = await request('POST', '/api/projects/open-claude-cli');
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0][1].join(' '), /claude/);
+  }, { spawnProcess });
 });
 
 test('un error inesperado se traduce a 500', async () => {
