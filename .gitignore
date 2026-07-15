@@ -14,3 +14,6 @@ links-inventory.json
 
 # Planes de Hermes Agent — scratch local, no código del repo
 .hermes/
+
+# Bot de Telegram propio de VCC -- credenciales, no versionar
+backend/monitoring-core/telegram-config.json

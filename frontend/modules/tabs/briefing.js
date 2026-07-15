@@ -1,6 +1,28 @@
 import { escHtml } from '../core/dom.js';
-import { apiFetch } from '../core/api.js';
+import { apiFetch, get } from '../core/api.js';
 import { showManageBanner } from '../core/dom.js';
+
+// Se pide una sola vez al cargar la app (ver app.js init()), no en cada refresh de 30s --
+// el catch-up es "que paso mientras VCC estaba apagado", no cambia mientras la sesion sigue activa.
+let catchupHtml = '';
+
+export async function loadCatchupBanner() {
+  try {
+    const data = await get('/api/monitoring-core/catchup');
+    const withEvents = (data.hosts ?? []).filter(h => h.events?.length > 0 && !h.error);
+    if (withEvents.length === 0) { catchupHtml = ''; return; }
+    const items = withEvents.map(h =>
+      `<div class="brief-catchup-host"><strong>${escHtml(h.serverId)}</strong>: ${h.events.length} registro(s) de estado disponible(s)</div>`
+    ).join('');
+    catchupHtml =
+      `<div class="briefing-card briefing-full brief-catchup">` +
+      `<div class="briefing-card-label">ESTADO REGISTRADO EN LOS HOSTS CON AGENTE LOCAL</div>` +
+      `<div class="briefing-card-body">${items}</div>` +
+      `</div>`;
+  } catch {
+    catchupHtml = '';
+  }
+}
 
 export function parsePendientesDetail(sections) {
   const raw = sections['Pendientes'] ?? '';
@@ -90,6 +112,8 @@ export function renderBriefing(sections, project = { id: null, environment: null
     `<div class="brief-hero-label">PRÓXIMO PASO</div>` +
     `<div class="brief-hero-text">${escHtml(nextStep || '—')}</div>` +
     `</div>` +
+
+    catchupHtml +
 
     `<div class="briefing-card ok">` +
     `<div class="briefing-card-label">ESTADO ACTUAL</div>` +

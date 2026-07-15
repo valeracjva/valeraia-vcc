@@ -26,6 +26,8 @@ import mcpRouter       from './routes/mcp.js';
 import linksRouter     from './routes/links.js';
 import sessionsRouter  from './routes/sessions.js';
 import agentsRouter    from './routes/agents.js';
+import monitoringCoreRouter from './routes/monitoring-core.js';
+import { startPoller } from './monitoring-core/poller.js';
 
 const app = express();
 
@@ -83,6 +85,7 @@ app.use('/api/links', (req, res, next) => {
   next();
 });
 app.use('/api/links',    linksRouter);
+app.use('/api/monitoring-core', monitoringCoreRouter);
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({
@@ -118,5 +121,9 @@ httpServer.listen(SERVER.port, SERVER.host, () => {
     const ok = existsSync(filePath);
     console.log(`  ${ok ? '✓' : '✗'} ${label}${ok ? '' : '  ← ARCHIVO NO ENCONTRADO'}`);
   }
+
+  startPoller();
+  console.log('  ✓ Monitoring core: poller propio iniciado (heartbeat + transición de estado + Telegram)');
+
   console.log('');
 });
