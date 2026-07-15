@@ -7,6 +7,7 @@ import { initBriefing, renderBriefing } from './modules/tabs/briefing.js';
 import { renderCockpit } from './modules/tabs/cockpit.js';
 import { initGovern, connectGovernWS, registerGovernStreamSink } from './modules/tabs/govern.js';
 import { initApis, loadApis } from './modules/tabs/apis.js';
+import { initAgents, loadAgents } from './modules/tabs/agents.js';
 import { initProjects, loadProjects, setActiveProject, syncProjectsContext } from './modules/tabs/projects.js';
 import { initSSL, loadSSL } from './modules/tabs/ssl.js';
 import { initTunnels, loadTunnels, updateTunnelDots } from './modules/tabs/tunnels.js';
@@ -154,6 +155,7 @@ async function init() {
       if (tab === 'proyectos') loadProjects();
       if (tab === 'opsmap') loadOpsMap();
       if (tab === 'apis') loadApis();
+      if (tab === 'agentes') loadAgents();
       if (tab === 'mcp') loadMcp();
       if (tab === 'links') loadLinks();
     },
@@ -166,6 +168,7 @@ async function init() {
   initInventory({ confirmDialog });
   initOpsMap();
   initApis();
+  initAgents();
   initMcp({ confirmDialog });
   initLinks({ confirmDialog });
   initJsonModal();
