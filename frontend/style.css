@@ -3609,6 +3609,22 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .view-section-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
 .view-toolbar-end   { display: flex; align-items: center; gap: 6px; }
 
+/* ── Input de búsqueda (Links) ───────────────────────────────── */
+.links-search-input {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: var(--text);
+  min-width: 200px;
+}
+.links-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ── Botón base ──────────────────────────────────────────────── */
 .btn {
   display: inline-flex;

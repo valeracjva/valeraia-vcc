@@ -39,6 +39,7 @@ let linksTipos = []; // [{ nombre, color, count }]
 let linksFilterTipo = '';
 let linksFilterEstado = '';
 let linksFilterFavOnly = false;
+let linksFilterTexto = '';
 let confirmDialogRef = null;
 
 function truncate(str, max) {
@@ -117,7 +118,7 @@ function buildLinkCard(link) {
 function renderLinksView() {
   const c = document.getElementById('links-container');
   if (!c) return;
-  const visible = filterLinks(linksAllData, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly })
+  const visible = filterLinks(linksAllData, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly, texto: linksFilterTexto })
     .slice()
     .sort((a, b) => {
       if (a.favorito !== b.favorito) return a.favorito ? -1 : 1;
@@ -195,6 +196,11 @@ export function initLinks({ confirmDialog } = {}) {
   document.getElementById('btn-links-fav-only')?.addEventListener('click', (e) => {
     linksFilterFavOnly = !linksFilterFavOnly;
     e.currentTarget.classList.toggle('active', linksFilterFavOnly);
+    renderLinksView();
+  });
+
+  document.getElementById('links-search')?.addEventListener('input', (e) => {
+    linksFilterTexto = e.target.value;
     renderLinksView();
   });
 
