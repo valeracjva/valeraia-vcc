@@ -93,10 +93,22 @@ Reglas fijas del estándar:
   falta tras el fix de `align-items`.
 
 ### `.ssl-card` (SSL)
-- **Cambia:** tamaño de título (`.ssl-card-domain`) a `0.8rem` único.
+- **Cambia:** tamaño de título (`.ssl-card-domain`) a `0.8rem` único. **Adenda 2026-07-16:** el
+  border-left de 3px dejó de ser base (grey por defecto en toda card) y pasó a vivir solo en los
+  modificadores `.ssl-status-*`, igualando el patrón de `.infra-card`/`.tunnel-card` (sin estado
+  = sin rail, nunca un rail gris permanente). Cambio semántico, no visual — todo dominio siempre
+  trae un status calculado por backend, así que no hubo diferencia observable.
 - **Se mantiene:** métricas propias en 2 columnas (label izquierda / valor derecha — vencimiento
   y fecha, no son barras de uso de recurso), border-left por status ya coherente con el
   estándar, estado `error` con border dashed (caso ya distinguido a propósito).
+
+### `.govern-card` (Gobernanza) — adenda 2026-07-16, familia que faltaba en el relevamiento original
+- **Cambia:** `.govern-card-name` de `0.82rem`/`700` a `0.8rem`/`600`, igual al resto.
+- **Se mantiene:** ícono en vez de dot en el header (apropiado — representa un script, no un
+  servidor/dominio con estado), footer con acción primaria "▶ Ejecutar" (mismo patrón de sección
+  opcional que ya usa Túneles), sin border-left por severidad — los scripts de gobernanza no
+  tienen un estado de riesgo que comunicar, forzar uno sería inventar dato que no existe (mismo
+  criterio que se usó para no tocar `.ssl-card-metrics`).
 
 ## Riesgo y verificación
 
