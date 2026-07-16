@@ -1845,8 +1845,7 @@ button { font-family: var(--font-ui); }
 }
 
 .tunnel-card.tunnel-prod {
-  border-color: rgba(239, 68, 68, 0.28);
-  background: rgba(239, 68, 68, 0.02);
+  border-left: 3px solid var(--danger);
 }
 
 .tunnel-card.tunnel-adhoc {
@@ -1921,7 +1920,7 @@ button { font-family: var(--font-ui); }
 .tunnel-db-table td:not(:first-child) { text-align: right; padding-right: 4px; }
 
 .tunnel-card-name {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text);
   margin-bottom: 2px;
