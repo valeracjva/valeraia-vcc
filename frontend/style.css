@@ -3618,7 +3618,7 @@ html[data-theme="light"] .btn-infra-monitored.active {
   border-radius: 6px;
   padding: 5px 10px;
   color: var(--text);
-  min-width: 200px;
+  width: 140px;
 }
 .links-search-input:focus {
   outline: none;
