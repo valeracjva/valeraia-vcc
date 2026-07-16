@@ -2035,6 +2035,11 @@ button { font-family: var(--font-ui); }
   font-size: 0.82rem;
 }
 
+/* ── Card estándar VCC — implementación de referencia ─────
+   Anatomía: header (dot + título 0.8rem mono 600 + badges + ✎/× a la derecha)
+   + meta lines (0.72rem) + sección opcional + footer opcional.
+   Ver docs/superpowers/specs/2026-07-16-estandarizacion-cards-design.md
+   Proyectos/Túneles/SSL migran a este mismo tamaño de título y regla de borde-left. ── */
 .infra-card {
   background: var(--surface);
   border: 1px solid var(--border-2);
@@ -2064,7 +2069,7 @@ button { font-family: var(--font-ui); }
 
 .infra-id {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text);
   flex: 1;
