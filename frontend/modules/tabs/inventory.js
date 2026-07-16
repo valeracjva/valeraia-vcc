@@ -1,6 +1,6 @@
 import { get, apiFetch } from '../core/api.js';
 import { publishActivityNote } from '../core/activity-rail.js';
-import { buildAccordion, escHtml, formField, formPasswordField, formSelect, showManageBanner } from '../core/dom.js';
+import { buildAccordion, escHtml, formField, formPasswordField, formSelect, openEditModal, showManageBanner } from '../core/dom.js';
 
 // === M4 — Inventario Infra ===
 const RISK_COLORS = {
@@ -288,7 +288,6 @@ function renderInventoryManage() {
     `</div>` +
     `<div class="manage-banner hidden" id="infra-manage-banner"></div>` +
     `<button class="btn btn-solid btn-manage-add" id="btn-infra-add">＋ Agregar servidor</button>` +
-    `<div id="infra-form-container"></div>` +
     `<table class="manage-table data-table">` +
       `<thead><tr>` +
         `<th>ID</th><th>IP</th><th>OS</th><th>Empresa</th><th>Riesgo</th><th title="Monitoreo activo">Monitor</th><th></th>` +
@@ -369,16 +368,14 @@ function renderInventoryManage() {
   });
 
   container.querySelector('#btn-infra-add').addEventListener('click', () => {
-    const fc = document.getElementById('infra-form-container');
-    showInventoryForm(null, fc, () => { fc.innerHTML = ''; });
+    showInventoryModal(null);
   });
 
   container.querySelectorAll('.btn-manage-edit').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.editId;
       const srv = infraAllServers.find(s => s.id === id);
-      const fc = document.getElementById('infra-form-container');
-      if (srv) showInventoryForm(srv, fc, () => { fc.innerHTML = ''; });
+      if (srv) showInventoryModal(srv);
     });
   });
 
@@ -422,18 +419,7 @@ function renderInventoryManage() {
 }
 
 function showInventoryModal(srv) {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay infra-edit-modal';
-  const box = document.createElement('div');
-  box.className = 'modal-box infra-edit-modal-box';
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-  // A pedido: NO cerrar al clickear afuera -- solo Escape o los botones Cancelar/Guardar
-  // (formulario largo, un click afuera accidental no debe perder lo tipeado).
-  const onKeydown = (e) => { if (e.key === 'Escape') close(); };
-  const close = () => { document.removeEventListener('keydown', onKeydown); overlay.remove(); };
-  document.addEventListener('keydown', onKeydown);
-  showInventoryForm(srv, box, close);
+  openEditModal((box, close) => showInventoryForm(srv, box, close));
 }
 
 function showInventoryForm(srv, container, onClose) {
@@ -549,7 +535,8 @@ function showInventoryForm(srv, container, onClose) {
       infraAllServers = servers;
       renderInventory(servers);
       onClose();
-      if (document.getElementById('infra-form-container')) renderInventoryManage();
+      const manageContainer = document.getElementById('infra-manage-container');
+      if (manageContainer && !manageContainer.classList.contains('hidden')) renderInventoryManage();
     } catch (err) {
       showFormErr(err.message);
     }
