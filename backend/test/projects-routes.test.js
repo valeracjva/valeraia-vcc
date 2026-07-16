@@ -40,14 +40,16 @@ function registryFixture() {
   };
 }
 
-async function withApi(run, { currentProjectId = 'alpha', handoverProjectId = 'alpha', spawnProcess } = {}) {
+async function withApi(run, { currentProjectId = 'alpha', handoverProjectId = 'alpha', spawnProcess, writeStateFiles = true } = {}) {
   const directory = await mkdtemp(path.join(tmpdir(), 'vcc-project-routes-'));
   const registryPath = path.join(directory, 'projects-registry.json');
   const currentProjectPath = path.join(directory, 'current-project.json');
   const handoverPath = path.join(directory, 'HANDOVER.md');
   await writeFile(registryPath, JSON.stringify(registryFixture(), null, 2), 'utf8');
-  await writeFile(currentProjectPath, JSON.stringify({ projectId: currentProjectId }), 'utf8');
-  await writeFile(handoverPath, `## Proyecto activo\n\n- Proyecto ID: ${handoverProjectId}\n`, 'utf8');
+  if (writeStateFiles) {
+    await writeFile(currentProjectPath, JSON.stringify({ projectId: currentProjectId }), 'utf8');
+    await writeFile(handoverPath, `## Proyecto activo\n\n- Proyecto ID: ${handoverProjectId}\n`, 'utf8');
+  }
 
   const store = createRegistryStore(registryPath);
   const app = express();
@@ -235,6 +237,16 @@ test('DELETE bloquea referencia exclusiva de HANDOVER.md', async () => {
     const { response } = await request('DELETE', '/api/projects/alpha', { expectedHash });
     assert.equal(response.status, 409);
   }, { currentProjectId: 'beta', handoverProjectId: 'alpha' });
+});
+
+test('DELETE funciona aunque current-project.json y HANDOVER.md no existan', async () => {
+  await withApi(async ({ request, store }) => {
+    const expectedHash = await store.getRegistryHash();
+    const { response } = await request('DELETE', '/api/projects/beta', { expectedHash });
+
+    assert.equal(response.status, 200);
+    assert.ok(!(await store.readRegistry()).registry.projects.some(item => item.id === 'beta'));
+  }, { writeStateFiles: false });
 });
 
 test('crea, edita y borra un environment', async () => {

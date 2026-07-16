@@ -125,14 +125,23 @@ function findEnvironment(project, name) {
   return environment;
 }
 
+async function readFileIfExists(filePath) {
+  try {
+    return await readFile(filePath, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 async function getActiveProjectIds(currentProjectPath, handoverPath) {
   const [currentRaw, handover] = await Promise.all([
-    readFile(currentProjectPath, 'utf8'),
-    readFile(handoverPath, 'utf8'),
+    readFileIfExists(currentProjectPath),
+    readFileIfExists(handoverPath),
   ]);
-  const current = JSON.parse(currentRaw);
-  const handoverMatch = handover.match(/^- Proyecto ID:\s*(.+?)\s*$/m);
-  return new Set([current.projectId, handoverMatch?.[1]].filter(Boolean));
+  const current = currentRaw ? JSON.parse(currentRaw) : null;
+  const handoverMatch = handover?.match(/^- Proyecto ID:\s*(.+?)\s*$/m);
+  return new Set([current?.projectId, handoverMatch?.[1]].filter(Boolean));
 }
 
 export function createProjectsRouter({
