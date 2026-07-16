@@ -2093,6 +2093,22 @@ button { font-family: var(--font-ui); }
   white-space: nowrap;
 }
 
+/* Fila 2 de Inventario -- nombre a la izquierda, IP a la derecha. Header (fila 1) queda libre
+   para dot + badges de riesgo/perfil + conexión + ✎/×, que antes competían con el nombre por
+   espacio y lo truncaban con servers de varios perfiles. */
+#infra-container .infra-card-row2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+#infra-container .infra-card-row2 .infra-id { margin-bottom: 0; }
+#infra-container .infra-card-row2 .infra-ip {
+  margin-bottom: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .infra-risk-badge {
   font-family: var(--font-mono);
   font-size: 0.6rem;

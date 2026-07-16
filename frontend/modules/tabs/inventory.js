@@ -58,14 +58,16 @@ function buildServerCard(srv) {
   card.innerHTML =
     `<div class="infra-card-header">` +
       `<span class="infra-dot" style="background:${riskColor}"></span>` +
-      `<span class="infra-id">${escHtml(srv.id)}</span>` +
       `<span class="infra-risk-badge" style="color:${riskColor};border-color:${riskColor}">${riskLabel}</span>` +
       ((srv.perfil || []).map(p => `<span class="infra-perfil-badge">${escHtml(p)}</span>`).join('')) +
       (srv.monitoreado ? `<span class="infra-conn-dot pending" data-conn="${escHtml(srv.id)}" title="Esperando métricas…"></span>` : '') +
       `<button class="infra-edit-btn" title="Editar servidor" data-edit-id="${escHtml(srv.id)}">✎</button>` +
       `<button class="infra-hide-btn" title="Ocultar de la vista" data-hide-id="${escHtml(srv.id)}">×</button>` +
     `</div>` +
-    `<div class="infra-ip">${escHtml(srv.ip)}</div>` +
+    `<div class="infra-card-row2">` +
+      `<span class="infra-id" title="${escHtml(srv.id)}">${escHtml(srv.id)}</span>` +
+      `<span class="infra-ip">${escHtml(srv.ip)}</span>` +
+    `</div>` +
     `<div class="infra-os">${escHtml(srv.os)}</div>` +
     `<div class="infra-empresa">${escHtml(srv.empresa)}</div>` +
     `<div class="infra-rol">${escHtml(srv.rol)}</div>` +
