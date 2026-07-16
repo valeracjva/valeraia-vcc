@@ -1465,8 +1465,8 @@ button { font-family: var(--font-ui); }
 }
 .govern-card-name {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -1691,7 +1691,6 @@ button { font-family: var(--font-ui); }
   border-radius: 8px;
   background: var(--surface);
   border: 1px solid var(--border-2);
-  border-left: 3px solid var(--border-2);
   transition: border-color 0.15s;
   cursor: default;
 }
@@ -1732,12 +1731,12 @@ button { font-family: var(--font-ui); }
 /* Reusa el mismo ✎/× de las cards de Inventario — mismo look, mismo comportamiento hover-reveal. */
 .ssl-card:hover .infra-edit-btn,
 .ssl-card:hover .infra-hide-btn { opacity: 1; }
-.ssl-card.ssl-status-ok      { border-left-color: var(--success); }
-.ssl-card.ssl-status-warn    { border-left-color: var(--warning); }
-.ssl-card.ssl-status-crit    { border-left-color: var(--danger); }
-.ssl-card.ssl-status-expired { border-left-color: var(--danger); }
-.ssl-card.ssl-status-error   { border-left-color: var(--warning); border-left-style: dashed; }
-.ssl-card.ssl-status-archived { border-left-color: var(--text-faint); opacity: 0.6; }
+.ssl-card.ssl-status-ok      { border-left: 3px solid var(--success); }
+.ssl-card.ssl-status-warn    { border-left: 3px solid var(--warning); }
+.ssl-card.ssl-status-crit    { border-left: 3px solid var(--danger); }
+.ssl-card.ssl-status-expired { border-left: 3px solid var(--danger); }
+.ssl-card.ssl-status-error   { border-left: 3px dashed var(--warning); }
+.ssl-card.ssl-status-archived { border-left: 3px solid var(--text-faint); opacity: 0.6; }
 
 /* SSL — vista por dominio */
 .ssl-groups {
