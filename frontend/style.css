@@ -1826,7 +1826,6 @@ button { font-family: var(--font-ui); }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 8px;
-  align-items: start;
 }
 
 .tunnel-card {
@@ -2069,6 +2068,10 @@ button { font-family: var(--font-ui); }
   font-weight: 600;
   color: var(--text);
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .infra-risk-badge {
@@ -2097,9 +2100,14 @@ button { font-family: var(--font-ui); }
   font-size: 0.72rem;
   color: var(--text-muted);
   margin-bottom: 2px;
+  overflow-wrap: break-word;
 }
 
 .infra-ip { font-family: var(--font-mono); color: var(--text-faint); }
+a.infra-ip { display: block; text-decoration: none; }
+a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
+
+.link-nota { margin-top: 6px; }
 
 .infra-toggle {
   display: flex;
@@ -2500,13 +2508,15 @@ button { font-family: var(--font-ui); }
   gap: 10px;
   margin-bottom: 12px;
 }
-.form-field { display: flex; flex-direction: column; gap: 4px; }
+.form-field { display: flex; flex-direction: column; margin-bottom: 12px; }
 .form-label {
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
+  display: block;
+  margin-bottom: 6px;
 }
 .form-input, .form-textarea {
   background: var(--surface);
@@ -2524,7 +2534,7 @@ button { font-family: var(--font-ui); }
   border-color: var(--accent);
 }
 .form-input[readonly] { opacity: 0.6; cursor: not-allowed; }
-.form-textarea { resize: vertical; margin-top: 4px; }
+.form-textarea { resize: vertical; }
 .manage-form-actions {
   display: flex;
   justify-content: flex-end;
@@ -3936,6 +3946,36 @@ html[data-theme="light"] .btn-infra-monitored.active {
 
 .infra-card.risk-alto:hover {
   box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--accent), 0 0 16px rgba(249, 115, 22, 0.16);
+}
+
+/* Links: borde izquierdo grueso + glow interior por TIPO -- tipos son CRUD (backend), así que el
+   color se resuelve en JS (tipoColorOf() en links.js) y se aplica inline, no vía clases fijas aquí. */
+
+/* Links: altura fija por card -- tags siempre ancladas abajo, sin importar largo de nota/URL */
+#links-container .infra-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+#links-container .infra-empresa {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+/* Agentes/MCPs: descripción con clamp de 3 líneas -- el resto del párrafo queda en el title (tooltip) */
+#agentes-container .infra-card,
+#mcp-container .infra-card { min-height: 110px; }
+.agent-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.project-card-desc {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  margin: 2px 0 4px;
 }
 
 /* ── Proyectos toolbar: alineado al resto de vistas ─────────── */

@@ -41,6 +41,12 @@ export const SCRIPTS = {
   'web-context':      'scripts/workspace/governance/generate-web-context.ps1',
   'sync-status':      'scripts/workspace/sync/sync-status.ps1',
   'cierre':           'scripts/workspace/governance/close-session.ps1',
+  'knowledge-organizer': process.env.VALERAIA_KERNEL
+    ? path.join(process.env.VALERAIA_KERNEL, 'core', 'governance', 'knowledge-organizer.ps1')
+    : 'scripts/workspace/governance/knowledge-organizer.ps1',
+  'daily-maintenance': process.env.VALERAIA_KERNEL
+    ? path.join(process.env.VALERAIA_KERNEL, 'core', 'governance', 'daily-workspace-maintenance.ps1')
+    : 'scripts/workspace/governance/daily-workspace-maintenance.ps1',
 };
 
 export const TUNNEL_PORTS = [3307, 3308, 3309, 3310];

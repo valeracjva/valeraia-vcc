@@ -58,6 +58,24 @@ const GOVERN_SCRIPTS = [
       'scripts/workspace/governance/generate-web-context.ps1',
     ],
   },
+  {
+    id: 'knowledge-organizer',
+    icon: '📚',
+    name: 'knowledge-organizer',
+    desc: 'Organiza documentos sueltos en knowledge/ raíz hacia sus subcarpetas correctas (cierres, sop, informes, planning) según el tipo detectado en el nombre de archivo. Corre automático a diario, disponible también manual.',
+    scripts: ['scripts/workspace/governance/knowledge-organizer.ps1'],
+  },
+  {
+    id: 'daily-maintenance',
+    icon: '🧹',
+    name: 'daily-maintenance',
+    desc: 'Mantenimiento diario del workspace: encadena refresh-indexes, compile-agents y workspace-health (modo rápido) en un solo paso. Corre automático vía Task Scheduler a las 08:00.',
+    scripts: [
+      'scripts/workspace/governance/refresh-workspace-indexes.ps1',
+      'scripts/workspace/governance/compile-agents-md.ps1',
+      'scripts/workspace/governance/workspace-health.ps1',
+    ],
+  },
 ];
 
 function setButtonsDisabled(disabled) {

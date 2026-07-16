@@ -249,6 +249,14 @@ function renderProjectCard(project) {
     card.appendChild(catEl);
   }
 
+  if (project.notes) {
+    const desc = document.createElement('div');
+    desc.className = 'infra-os agent-desc project-card-desc';
+    desc.title = project.notes;
+    desc.textContent = project.notes;
+    card.appendChild(desc);
+  }
+
   // ── Dots de environments (siempre visibles) ───────────────
   if (envs.length) {
     const envsRow = document.createElement('div');

@@ -30,10 +30,11 @@ router.get('/', async (req, res, next) => {
     const enabled = new Set(settings.enabledMcpjsonServers ?? []);
     const mcps = Object.entries(mcpJson.mcpServers ?? {}).map(([name, cfg]) => ({
       name,
-      command: cfg.command,
-      args:    cfg.args ?? [],
-      env:     maskEnv(cfg.env),
-      enabled: enabled.has(name),
+      command:     cfg.command,
+      args:        cfg.args ?? [],
+      env:         maskEnv(cfg.env),
+      description: cfg.description ?? null,
+      enabled:     enabled.has(name),
     }));
     res.json({ mcps });
   } catch (err) { next(err); }
@@ -64,7 +65,7 @@ router.get('/ssh-servers', async (req, res, next) => {
 // POST /api/mcp — agrega nuevo MCP
 router.post('/', async (req, res, next) => {
   try {
-    const { name, command, args = [], env = {}, enabled = true } = req.body;
+    const { name, command, args = [], env = {}, enabled = true, description = '' } = req.body;
     if (!name?.trim())    return res.status(400).json({ error: 'name requerido' });
     if (!command?.trim()) return res.status(400).json({ error: 'command requerido' });
 
@@ -74,6 +75,7 @@ router.post('/', async (req, res, next) => {
 
     const entry = { command: command.trim(), args };
     if (Object.keys(env).length) entry.env = env;
+    if (description.trim()) entry.description = description.trim();
     mcpJson.mcpServers[name] = entry;
 
     if (enabled) {
@@ -94,7 +96,7 @@ router.post('/', async (req, res, next) => {
 router.put('/:name', async (req, res, next) => {
   try {
     const name = req.params.name;
-    const { command, args = [], env = {} } = req.body;
+    const { command, args = [], env = {}, description = '' } = req.body;
     if (!command?.trim()) return res.status(400).json({ error: 'command requerido' });
 
     const mcpJson = await readMcpJson();
@@ -105,6 +107,7 @@ router.put('/:name', async (req, res, next) => {
       command: command.trim(),
       args,
       ...(Object.keys(env).length ? { env } : {}),
+      ...(description.trim() ? { description: description.trim() } : {}),
     };
 
     await writeFile(MCP_JSON, JSON.stringify(mcpJson, null, 2), 'utf8');

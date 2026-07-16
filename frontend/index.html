@@ -283,10 +283,17 @@
 
       <!-- Tab: Agentes IA -->
       <div class="tab-panel hidden" id="tab-agentes">
-        <div class="view-toolbar apis-toolbar">
+        <div class="ssl-toolbar view-toolbar">
           <div class="view-toolbar-start">
-            <span class="view-section-label">Agentes IA</span>
+            <div class="btn-group infra-group-toggle">
+              <button class="btn-tab btn-agentes-group active" data-group="categoria">Categoría</button>
+              <button class="btn-tab btn-agentes-group" data-group="none">Sin agrupar</button>
+              <button class="btn-tab btn-agentes-group" data-group="list">Listado</button>
+            </div>
+          </div>
+          <div class="view-toolbar-end">
             <span class="apis-subtitle" id="agentes-subtitle">~/.claude/agents/</span>
+            <button class="btn btn-ssl-refresh" id="btn-agentes-refresh">↻ Recargar</button>
           </div>
         </div>
         <div id="agentes-container"></div>
@@ -316,33 +323,30 @@
 
       <!-- Tab: Links -->
       <div class="tab-panel hidden" id="tab-links">
-        <div class="ssl-toolbar view-toolbar">
-          <div class="view-toolbar-start">
-            <div class="btn-group infra-group-toggle" id="links-tipo-filters">
-              <button class="btn-tab btn-links-tipo active" data-tipo="">Todos</button>
-              <button class="btn-tab btn-links-tipo" data-tipo="Repo">Repo</button>
-              <button class="btn-tab btn-links-tipo" data-tipo="Articulo">Artículo</button>
-              <button class="btn-tab btn-links-tipo" data-tipo="Skill">Skill</button>
-              <button class="btn-tab btn-links-tipo" data-tipo="MCP">MCP</button>
-              <button class="btn-tab btn-links-tipo" data-tipo="Otro">Otro</button>
+        <div id="links-main">
+          <div class="ssl-toolbar view-toolbar">
+            <div class="view-toolbar-start">
+              <div class="btn-group infra-group-toggle" id="links-tipo-filters"></div>
+              <div class="btn-group infra-group-toggle" id="links-estado-filters">
+                <button class="btn-tab btn-links-estado active" data-estado="">Todos</button>
+                <button class="btn-tab btn-links-estado" data-estado="Pendiente">Pendiente</button>
+                <button class="btn-tab btn-links-estado" data-estado="Revisado">Revisado</button>
+                <button class="btn-tab btn-links-estado" data-estado="Implementar">Implementar</button>
+                <button class="btn-tab btn-links-estado" data-estado="Descartado">Descartado</button>
+              </div>
+              <button class="btn-tab" id="btn-links-fav-only">★ Solo favoritos</button>
             </div>
-            <div class="btn-group infra-group-toggle" id="links-estado-filters">
-              <button class="btn-tab btn-links-estado active" data-estado="">Todos</button>
-              <button class="btn-tab btn-links-estado" data-estado="Pendiente">Pendiente</button>
-              <button class="btn-tab btn-links-estado" data-estado="Revisado">Revisado</button>
-              <button class="btn-tab btn-links-estado" data-estado="Implementar">Implementar</button>
-              <button class="btn-tab btn-links-estado" data-estado="Descartado">Descartado</button>
+            <div class="view-toolbar-end">
+              <span class="infra-counter" id="links-counter"></span>
+              <button class="btn btn-ssl-refresh" id="btn-links-refresh">↻ Recargar</button>
+              <button class="btn btn-ssl-refresh" id="btn-links-tipos-manage">⚙ Tipos</button>
+              <button class="btn btn-solid" id="btn-links-add">＋ Agregar link</button>
             </div>
-            <button class="btn-tab" id="btn-links-fav-only">★ Solo favoritos</button>
           </div>
-          <div class="view-toolbar-end">
-            <span class="infra-counter" id="links-counter"></span>
-            <button class="btn btn-ssl-refresh" id="btn-links-refresh">↻ Recargar</button>
-            <button class="btn btn-solid" id="btn-links-add">＋ Agregar link</button>
-          </div>
+          <div id="links-container"></div>
+          <div id="links-form-container"></div>
         </div>
-        <div id="links-container"></div>
-        <div id="links-form-container"></div>
+        <div class="hidden" id="links-tipos-manage-container"></div>
       </div>
 
       <div class="tab-panel hidden" id="tab-infra">

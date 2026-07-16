@@ -35,8 +35,8 @@ function buildMcpCard(mcp) {
       `<button class="infra-edit-btn" title="Editar MCP"   data-edit-name="${escHtml(mcp.name)}">✎</button>` +
       `<button class="infra-hide-btn" title="Ocultar de la vista" data-hide-name="${escHtml(mcp.name)}">×</button>` +
     `</div>` +
-    `<div class="infra-ip">${escHtml(cmdShort)}</div>` +
-    `<div class="infra-os">${escHtml(argsFirst)}</div>` +
+    (mcp.description ? `<div class="infra-os agent-desc" title="${escHtml(mcp.description)}">${escHtml(mcp.description)}</div>` : '') +
+    `<div class="infra-ip">${escHtml(cmdShort)}${argsFirst !== '—' ? ' · ' + escHtml(argsFirst) : ''}</div>` +
     (envCount ? `<div class="infra-empresa">${envCount} variable${envCount > 1 ? 's' : ''} de entorno</div>` : '');
 
   card.querySelector('.infra-edit-btn').addEventListener('click', (e) => {
@@ -368,8 +368,10 @@ function showMcpModal(mcp) {
   box.className = 'modal-box infra-edit-modal-box';
   overlay.appendChild(box);
   document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  // Regla VCC: los modales nunca cierran con clic afuera -- solo Cancelar/Guardar/X o Escape.
+  const onKeydown = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { document.removeEventListener('keydown', onKeydown); overlay.remove(); };
+  document.addEventListener('keydown', onKeydown);
   showMcpForm(mcp, box, close);
 }
 
@@ -385,6 +387,8 @@ function showMcpForm(mcp, container, onClose) {
         formField('Nombre',  'mcp-f-name',    isEdit ? mcp.name : '', 'ej: mi-mcp', isEdit) +
         formField('Comando', 'mcp-f-command', mcp?.command ?? '',     'ej: node') +
       `</div>` +
+      `<label class="form-label" for="mcp-f-description">Descripción (opcional)</label>` +
+      `<textarea class="form-textarea" id="mcp-f-description" rows="2" placeholder="Para qué sirve este MCP...">${escHtml(mcp?.description ?? '')}</textarea>` +
       `<label class="form-label" for="mcp-f-args">Args (uno por línea)</label>` +
       `<textarea class="form-textarea" id="mcp-f-args" rows="3" placeholder="C:\\ruta\\al\\index.js">${escHtml(argsText)}</textarea>` +
       `<label class="form-label" for="mcp-f-env">Variables de entorno (KEY=valor, una por línea)</label>` +
@@ -407,6 +411,7 @@ function showMcpForm(mcp, container, onClose) {
     const command = document.getElementById('mcp-f-command').value.trim();
     const argsRaw = document.getElementById('mcp-f-args').value.trim();
     const envRaw  = document.getElementById('mcp-f-env').value.trim();
+    const description = document.getElementById('mcp-f-description').value.trim();
     const enabled = !isEdit && document.getElementById('mcp-f-enabled').checked;
 
     if (!name || !command) {
@@ -423,9 +428,9 @@ function showMcpForm(mcp, container, onClose) {
 
     try {
       if (isEdit) {
-        await apiFetch(`/api/mcp/${encodeURIComponent(name)}`, { method: 'PUT', body: { command, args, env } });
+        await apiFetch(`/api/mcp/${encodeURIComponent(name)}`, { method: 'PUT', body: { command, args, env, description } });
       } else {
-        await apiFetch('/api/mcp', { method: 'POST', body: { name, command, args, env, enabled } });
+        await apiFetch('/api/mcp', { method: 'POST', body: { name, command, args, env, enabled, description } });
       }
       onClose();
       await loadMcp();

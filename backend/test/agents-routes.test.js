@@ -39,8 +39,8 @@ test('GET /api/agents lista agentes con nombre y categoría', async () => {
     assert.deepEqual(
       payload.agents.sort((a, b) => a.name.localeCompare(b.name)),
       [
-        { name: 'laravel-dev', category: 'aplicaciones' },
-        { name: 'networking', category: 'red' },
+        { name: 'laravel-dev', category: 'aplicaciones', description: null },
+        { name: 'networking', category: 'red', description: null },
       ],
     );
   }, {

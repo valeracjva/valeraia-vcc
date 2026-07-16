@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { Router } from 'express';
 
-import { parseAgentCategory } from '../lib/agent-catalog.js';
+import { parseAgentCategory, parseAgentDescription } from '../lib/agent-catalog.js';
 
 export function createAgentsRouter({
   agentsDir = path.join(os.homedir(), '.claude', 'agents'),
@@ -22,6 +22,7 @@ export function createAgentsRouter({
         agents.push({
           name: fileName.replace(/\.md$/, ''),
           category: parseAgentCategory(content),
+          description: parseAgentDescription(content),
         });
       }
       res.json({ agents });
