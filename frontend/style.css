@@ -1443,6 +1443,7 @@ button { font-family: var(--font-ui); }
 .govern-card {
   background: var(--surface);
   border: 1px solid var(--border-2);
+  border-left: 3px solid var(--accent);
   border-radius: 8px;
   padding: 16px;
   display: flex;
