@@ -104,11 +104,13 @@ Reglas fijas del estándar:
 
 ### `.govern-card` (Gobernanza) — adenda 2026-07-16, familia que faltaba en el relevamiento original
 - **Cambia:** `.govern-card-name` de `0.82rem`/`700` a `0.8rem`/`600`, igual al resto.
+  Border-left de 3px `var(--accent)`, **fijo en las 7 cards** (no por estado — confirmado con
+  Carlos: gobernanza no tiene señal de riesgo por script hoy, el resultado de la última
+  ejecución no se guarda por card, solo se ve en el panel Output compartido — un borde por
+  severidad real sería una feature nueva, no este ajuste de consistencia visual).
 - **Se mantiene:** ícono en vez de dot en el header (apropiado — representa un script, no un
-  servidor/dominio con estado), footer con acción primaria "▶ Ejecutar" (mismo patrón de sección
-  opcional que ya usa Túneles), sin border-left por severidad — los scripts de gobernanza no
-  tienen un estado de riesgo que comunicar, forzar uno sería inventar dato que no existe (mismo
-  criterio que se usó para no tocar `.ssl-card-metrics`).
+  servidor/dominio), footer con acción primaria "▶ Ejecutar" (mismo patrón de sección opcional
+  que ya usa Túneles).
 
 ## Riesgo y verificación
 
