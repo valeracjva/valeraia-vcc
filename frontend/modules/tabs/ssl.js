@@ -413,11 +413,16 @@ function showDomainModal(entry) {
       const dnsAdmin = document.getElementById('ssl-f-dnsadmin').value.trim();
       if (!domain) return;
 
+      // El ✎ de la card abre este modal sin pasar por Gestionar -- sslManageDomains puede estar
+      // vacío (nunca se cargó en esta sesión). Traer la lista real antes de armar el array
+      // completo, para no pisar ssl-watch.json con solo el registro tocado.
+      const currentDomains = sslManageDomains.length ? sslManageDomains : (await get('/api/ssl/config')).domains;
+
       const updated = isEdit
-        ? sslManageDomains.map(d => d.domain === entry.domain
+        ? currentDomains.map(d => d.domain === entry.domain
             ? { ...d, domain, label: label || domain, empresa, dnsAdmin }
             : d)
-        : [...sslManageDomains, { domain, label: label || domain, empresa, dnsAdmin }];
+        : [...currentDomains, { domain, label: label || domain, empresa, dnsAdmin }];
 
       const ok = await saveConfig(updated);
       if (ok) close();

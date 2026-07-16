@@ -415,7 +415,7 @@ async function toggleManageTunnels(force) {
 // ── Ad-hoc — túnel de un solo uso ────────────────────────────────────────────
 
 function showAdhocModal() {
-  openEditModal((box) => {
+  openEditModal((box, close) => {
     box.innerHTML =
       `<div class="manage-form">` +
         `<div class="manage-form-title">Túnel ad-hoc</div>` +
@@ -432,11 +432,11 @@ function showAdhocModal() {
         `</div>` +
       `</div>`;
 
-    box.querySelector('#btn-adhoc-submit').addEventListener('click', submitAdhoc);
+    box.querySelector('#btn-adhoc-submit').addEventListener('click', () => submitAdhoc(close));
   }, { size: 'standard' });
 }
 
-async function submitAdhoc() {
+async function submitAdhoc(close) {
   const port    = document.getElementById('adhoc-port').value;
   const name    = document.getElementById('adhoc-name').value;
   const remote  = document.getElementById('adhoc-remote').value;
@@ -459,7 +459,7 @@ async function submitAdhoc() {
     else {
       status.textContent = '✓ Abierto';
       await loadTunnels();
-      document.querySelector('.modal-overlay.infra-edit-modal')?.remove();
+      close();
     }
   } catch {
     status.textContent = 'Error de conexión';

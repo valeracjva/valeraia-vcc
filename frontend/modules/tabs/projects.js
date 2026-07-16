@@ -631,7 +631,7 @@ function showEnvironmentModal(project, environment = null) {
 }
 
 function showProjectMetadataModal(project) {
-  openEditModal((box) => {
+  openEditModal((box, close) => {
     box.appendChild(projectMetadataGrid(project));
 
     const actions = document.createElement('div');
@@ -653,7 +653,7 @@ function showProjectMetadataModal(project) {
         {},
         `Proyecto ${project.id} eliminado.`,
       );
-      document.querySelector('.modal-overlay.infra-edit-modal')?.remove();
+      close();
     });
 
     const save = document.createElement('button');
@@ -672,7 +672,7 @@ function showProjectMetadataModal(project) {
         { changes },
         `Proyecto ${project.id} actualizado.`,
       );
-      if (result) document.querySelector('.modal-overlay.infra-edit-modal')?.remove();
+      if (result) close();
     });
     actions.append(remove, save);
     box.appendChild(actions);
