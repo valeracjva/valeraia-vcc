@@ -1697,7 +1697,7 @@ button { font-family: var(--font-ui); }
 }
 .ssl-card:hover { border-color: var(--accent); }
 .ssl-card-header { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
-.ssl-card-domain { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.ssl-card-domain { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
 .ssl-card-domain[title] { cursor: help; }
 
 /* Misma grilla vertical que .infra-ip/.infra-empresa/.infra-rol: una línea por dato,
