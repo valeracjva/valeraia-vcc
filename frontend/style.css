@@ -3610,13 +3610,14 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .view-toolbar-end   { display: flex; align-items: center; gap: 6px; }
 
 /* ── Input de búsqueda (Links) ───────────────────────────────── */
+.links-search-wrap { position: relative; display: inline-flex; align-items: center; }
 .links-search-input {
   font-family: var(--font-ui);
   font-size: 0.75rem;
   background: var(--surface-2);
   border: 1px solid var(--border-2);
   border-radius: 6px;
-  padding: 5px 10px;
+  padding: 5px 22px 5px 10px;
   color: var(--text);
   width: 140px;
 }
@@ -3624,6 +3625,19 @@ html[data-theme="light"] .btn-infra-monitored.active {
   outline: none;
   border-color: var(--accent);
 }
+.links-search-clear {
+  position: absolute;
+  right: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.links-search-clear:hover { color: var(--accent); }
+.links-search-clear.hidden { display: none; }
 
 /* ── Botón base ──────────────────────────────────────────────── */
 .btn {

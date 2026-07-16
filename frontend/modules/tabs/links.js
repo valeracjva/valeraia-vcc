@@ -199,8 +199,18 @@ export function initLinks({ confirmDialog } = {}) {
     renderLinksView();
   });
 
-  document.getElementById('links-search')?.addEventListener('input', (e) => {
+  const searchInput = document.getElementById('links-search');
+  const searchClear = document.getElementById('links-search-clear');
+  searchInput?.addEventListener('input', (e) => {
     linksFilterTexto = e.target.value;
+    searchClear?.classList.toggle('hidden', linksFilterTexto === '');
+    renderLinksView();
+  });
+  searchClear?.addEventListener('click', () => {
+    linksFilterTexto = '';
+    if (searchInput) searchInput.value = '';
+    searchClear.classList.add('hidden');
+    searchInput?.focus();
     renderLinksView();
   });
 
