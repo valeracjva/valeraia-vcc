@@ -1,5 +1,5 @@
 import { get, apiFetch } from '../core/api.js';
-import { escHtml, formField, formSelect, showManageBanner } from '../core/dom.js';
+import { escHtml, formField, formSelect, openEditModal, showManageBanner } from '../core/dom.js';
 
 const ESTADO_COLOR = {
   Pendiente:    'var(--accent)',
@@ -238,14 +238,13 @@ export function initLinks({ confirmDialog } = {}) {
 }
 
 function showLinksForm(link) {
-  const isEdit = link !== null;
-  const container = document.getElementById('links-form-container');
-  const tagsText = (link?.tags ?? []).join(', ');
-  const tipoOptions = linksTipos.map(t => [t.nombre, t.nombre]);
+  openEditModal((container, close) => {
+    const isEdit = link !== null;
+    const tagsText = (link?.tags ?? []).join(', ');
+    const tipoOptions = linksTipos.map(t => [t.nombre, t.nombre]);
 
-  container.innerHTML =
-    `<div class="modal-overlay" id="links-form-overlay">` +
-      `<div class="modal-box manage-form">` +
+    container.innerHTML =
+      `<div class="manage-form">` +
         `<div class="manage-form-title">${isEdit ? 'Editar link' : 'Nuevo link'}</div>` +
         formField('URL', 'links-f-url', link?.url ?? '', 'https://...') +
         `<div class="manage-banner hidden" id="links-f-dup-warning"></div>` +
@@ -268,49 +267,45 @@ function showLinksForm(link) {
           `<button class="btn btn-ghost btn-modal-cancel" id="btn-links-form-cancel">Cancelar</button>` +
           `<button class="btn btn-primary btn-modal-ok" id="btn-links-form-save">${isEdit ? 'Guardar cambios' : 'Agregar'}</button>` +
         `</div>` +
-      `</div>` +
-    `</div>`;
+      `</div>`;
 
-  // Regla VCC: los modales nunca cierran con clic afuera -- solo Cancelar/Guardar/X o Escape.
-  const close = () => { document.removeEventListener('keydown', onKeydown); container.innerHTML = ''; };
-  const onKeydown = (e) => { if (e.key === 'Escape') close(); };
-  document.addEventListener('keydown', onKeydown);
-  document.getElementById('btn-links-form-cancel').addEventListener('click', close);
+    container.querySelector('#btn-links-form-cancel').addEventListener('click', close);
 
-  // Aviso no bloqueante de URL duplicada (no impide guardar, solo informa)
-  const urlInput  = document.getElementById('links-f-url');
-  const dupWarning = document.getElementById('links-f-dup-warning');
-  urlInput.addEventListener('input', () => {
-    const val = urlInput.value.trim();
-    const dup = val && linksAllData.some(l => l.url === val && l.id !== link?.id);
-    dupWarning.textContent = dup ? 'Ya existe un link guardado con esta URL. Se puede guardar igual.' : '';
-    dupWarning.classList.toggle('hidden', !dup);
-  });
+    // Aviso no bloqueante de URL duplicada (no impide guardar, solo informa)
+    const urlInput  = container.querySelector('#links-f-url');
+    const dupWarning = container.querySelector('#links-f-dup-warning');
+    urlInput.addEventListener('input', () => {
+      const val = urlInput.value.trim();
+      const dup = val && linksAllData.some(l => l.url === val && l.id !== link?.id);
+      dupWarning.textContent = dup ? 'Ya existe un link guardado con esta URL. Se puede guardar igual.' : '';
+      dupWarning.classList.toggle('hidden', !dup);
+    });
 
-  document.getElementById('btn-links-form-save').addEventListener('click', async () => {
-    const url    = document.getElementById('links-f-url').value.trim();
-    const titulo = document.getElementById('links-f-titulo').value.trim();
-    const tipo   = document.getElementById('links-f-tipo').value;
-    const estado = document.getElementById('links-f-estado').value;
-    const tags   = document.getElementById('links-f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
-    const nota   = document.getElementById('links-f-nota').value.trim();
-    const favorito = document.getElementById('links-f-favorito').checked;
+    container.querySelector('#btn-links-form-save').addEventListener('click', async () => {
+      const url    = container.querySelector('#links-f-url').value.trim();
+      const titulo = container.querySelector('#links-f-titulo').value.trim();
+      const tipo   = container.querySelector('#links-f-tipo').value;
+      const estado = container.querySelector('#links-f-estado').value;
+      const tags   = container.querySelector('#links-f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+      const nota   = container.querySelector('#links-f-nota').value.trim();
+      const favorito = container.querySelector('#links-f-favorito').checked;
 
-    if (!url || !titulo) return;
+      if (!url || !titulo) return;
 
-    const body = { url, titulo, tipo, estado, tags, nota, favorito };
-    try {
-      if (isEdit) {
-        await apiFetch(`/api/links/${encodeURIComponent(link.id)}`, { method: 'PATCH', body });
-      } else {
-        await apiFetch('/api/links', { method: 'POST', body });
+      const body = { url, titulo, tipo, estado, tags, nota, favorito };
+      try {
+        if (isEdit) {
+          await apiFetch(`/api/links/${encodeURIComponent(link.id)}`, { method: 'PATCH', body });
+        } else {
+          await apiFetch('/api/links', { method: 'POST', body });
+        }
+        close();
+        await loadLinks();
+      } catch (err) {
+        showManageBanner('links-f-save-error', `Error al guardar: ${err.message}`, true);
       }
-      close();
-      await loadLinks();
-    } catch (err) {
-      showManageBanner('links-f-save-error', `Error al guardar: ${err.message}`, true);
-    }
-  });
+    });
+  }, { size: 'compact' });
 }
 
 // === Gestión de tipos (CRUD) ===
@@ -328,7 +323,6 @@ function renderTiposManage() {
     `</div>` +
     `<div class="manage-banner hidden" id="tipos-manage-banner"></div>` +
     `<button class="btn btn-solid btn-manage-add" id="btn-tipo-add">＋ Agregar tipo</button>` +
-    `<div id="tipo-form-container"></div>` +
     `<table class="manage-table data-table">` +
       `<thead><tr><th>NOMBRE</th><th>COLOR</th><th>LINKS</th><th></th></tr></thead>` +
       `<tbody>`;
@@ -381,40 +375,40 @@ function renderTiposManage() {
 }
 
 function showTipoForm(tipo) {
-  const isEdit = tipo !== null;
-  const container = document.getElementById('tipo-form-container');
+  openEditModal((container, close) => {
+    const isEdit = tipo !== null;
 
-  container.innerHTML =
-    `<div class="manage-form">` +
-      `<div class="manage-form-title">${isEdit ? `Editar: ${escHtml(tipo.nombre)}` : 'Nuevo tipo'}</div>` +
-      formField('Nombre', 'tipo-f-nombre', tipo?.nombre ?? '', 'Tutorial, Video...') +
-      formSelect('Color', 'tipo-f-color', tipo?.color ?? 'accent', COLOR_OPTIONS) +
-      `<div class="manage-banner hidden" id="tipo-f-error"></div>` +
-      `<div class="manage-form-actions">` +
-        `<button class="btn btn-ghost btn-modal-cancel" id="btn-tipo-form-cancel">Cancelar</button>` +
-        `<button class="btn btn-primary btn-modal-ok" id="btn-tipo-form-save">${isEdit ? 'Guardar cambios' : 'Agregar'}</button>` +
-      `</div>` +
-    `</div>`;
+    container.innerHTML =
+      `<div class="manage-form">` +
+        `<div class="manage-form-title">${isEdit ? `Editar: ${escHtml(tipo.nombre)}` : 'Nuevo tipo'}</div>` +
+        formField('Nombre', 'tipo-f-nombre', tipo?.nombre ?? '', 'Tutorial, Video...') +
+        formSelect('Color', 'tipo-f-color', tipo?.color ?? 'accent', COLOR_OPTIONS) +
+        `<div class="manage-banner hidden" id="tipo-f-error"></div>` +
+        `<div class="manage-form-actions">` +
+          `<button class="btn btn-ghost btn-modal-cancel" id="btn-tipo-form-cancel">Cancelar</button>` +
+          `<button class="btn btn-primary btn-modal-ok" id="btn-tipo-form-save">${isEdit ? 'Guardar cambios' : 'Agregar'}</button>` +
+        `</div>` +
+      `</div>`;
 
-  const close = () => { container.innerHTML = ''; };
-  container.querySelector('#btn-tipo-form-cancel').addEventListener('click', close);
+    container.querySelector('#btn-tipo-form-cancel').addEventListener('click', close);
 
-  container.querySelector('#btn-tipo-form-save').addEventListener('click', async () => {
-    const nombre = document.getElementById('tipo-f-nombre').value.trim();
-    const color  = document.getElementById('tipo-f-color').value;
-    if (!nombre) return;
+    container.querySelector('#btn-tipo-form-save').addEventListener('click', async () => {
+      const nombre = document.getElementById('tipo-f-nombre').value.trim();
+      const color  = document.getElementById('tipo-f-color').value;
+      if (!nombre) return;
 
-    try {
-      if (isEdit) {
-        await apiFetch(`/api/links/tipos/${encodeURIComponent(tipo.nombre)}`, { method: 'PUT', body: { nombre, color } });
-      } else {
-        await apiFetch('/api/links/tipos', { method: 'POST', body: { nombre, color } });
+      try {
+        if (isEdit) {
+          await apiFetch(`/api/links/tipos/${encodeURIComponent(tipo.nombre)}`, { method: 'PUT', body: { nombre, color } });
+        } else {
+          await apiFetch('/api/links/tipos', { method: 'POST', body: { nombre, color } });
+        }
+        close();
+        await loadLinksTipos();
+        renderTiposManage();
+      } catch (err) {
+        showManageBanner('tipo-f-error', err.message, true);
       }
-      close();
-      await loadLinksTipos();
-      renderTiposManage();
-    } catch (err) {
-      showManageBanner('tipo-f-error', err.message, true);
-    }
-  });
+    });
+  }, { size: 'compact' });
 }
