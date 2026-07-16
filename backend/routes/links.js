@@ -6,7 +6,7 @@ import { PATHS } from '../config.js';
 const router = Router();
 
 const VALID_ESTADOS = ['Pendiente', 'Revisado', 'Implementar', 'Descartado'];
-const VALID_COLORES = ['accent', 'info', 'success', 'warning', 'danger', 'text-faint'];
+const VALID_COLORES = ['accent', 'info', 'success', 'warning', 'danger', 'text-faint', 'teal', 'purple', 'pink', 'cyan'];
 const DEFAULT_TIPOS = [
   { nombre: 'Repo',     color: 'accent'     },
   { nombre: 'Articulo', color: 'info'       },

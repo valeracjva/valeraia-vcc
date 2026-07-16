@@ -15,6 +15,10 @@ const COLOR_VAR = {
   warning:     'var(--warning)',
   danger:      'var(--danger)',
   'text-faint': 'var(--text-faint)',
+  teal:        'var(--tag-teal)',
+  purple:      'var(--tag-purple)',
+  pink:        'var(--tag-pink)',
+  cyan:        'var(--tag-cyan)',
 };
 
 const COLOR_LABEL = {
@@ -24,6 +28,10 @@ const COLOR_LABEL = {
   warning:     'Ámbar',
   danger:      'Rojo',
   'text-faint': 'Gris',
+  teal:        'Turquesa',
+  purple:      'Violeta',
+  pink:        'Rosa',
+  cyan:        'Celeste',
 };
 
 const TAG_PALETTE = ['var(--accent)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--danger)'];

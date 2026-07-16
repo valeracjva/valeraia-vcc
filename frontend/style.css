@@ -27,6 +27,12 @@
   --danger:      #EF4444;
   --info:        #3B82F6;
 
+  /* Decorativos — sin significado compartido en otras vistas, solo para paletas abiertas (ej. Tipos de Links) */
+  --tag-teal:    #14B8A6;
+  --tag-purple:  #A855F7;
+  --tag-pink:    #EC4899;
+  --tag-cyan:    #06B6D4;
+
   /* Accent (brand / active states) */
   --accent:      #6366F1;
   --accent-2:    #818CF8;
@@ -83,6 +89,11 @@ html[data-theme="light"] {
   --success:     #2D7A45;
   --warning:     #A05C1A;
   --danger:      #B22020;
+
+  --tag-teal:    #0F766E;
+  --tag-purple:  #7E22CE;
+  --tag-pink:    #BE185D;
+  --tag-cyan:    #0E7490;
 
   /* legacy tokens */
   --green:       #2D7A45;
