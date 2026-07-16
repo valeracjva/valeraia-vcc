@@ -1,7 +1,7 @@
 import { API_BASE } from '../core/constants.js';
 import { get } from '../core/api.js';
 import { publishActivityNote } from '../core/activity-rail.js';
-import { buildAccordion, escHtml } from '../core/dom.js';
+import { buildAccordion, escHtml, formField, openEditModal, showManageBanner } from '../core/dom.js';
 
 // === M10 — SSL ===
 const SSL_STATUS_LABEL = { ok: 'OK', warn: 'WARN', crit: 'CRÍTICO', expired: 'VENCIDO', error: 'SIN RESOLVER', archived: 'ARCHIVADO' };
@@ -87,7 +87,7 @@ function buildSSLCard(row) {
 
   card.querySelector('.infra-edit-btn').addEventListener('click', (e) => {
     e.stopPropagation();
-    openSslManageAndFocus(row.domain);
+    showDomainModal(row);
   });
   card.querySelector('.infra-hide-btn').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -316,135 +316,137 @@ export async function loadSSL(force = false) {
 
 // === M10 — ABM Dominios ===
 let sslManageMode = false;
+let sslManageDomains = [];
 
 function renderManageTable(domains) {
+  sslManageDomains = domains;
   const c = document.getElementById('ssl-manage-container');
   c.innerHTML = '';
 
-  // Formulario agregar
-  const addRow = document.createElement('div');
-  addRow.className = 'ssl-add-row';
-  addRow.innerHTML =
-    `<input class="ssl-input" id="ssl-new-domain" placeholder="dominio.com.ar" />` +
-    `<input class="ssl-input" id="ssl-new-label"  placeholder="Etiqueta" />` +
-    `<input class="ssl-input" id="ssl-new-empresa" placeholder="Empresa" />` +
-    `<input class="ssl-input" id="ssl-new-dnsadmin" placeholder="Admin DNS (opcional)" />` +
-    `<button class="btn btn-sm btn-primary btn-ssl-action add" id="btn-ssl-add">+ Agregar</button>`;
-  c.appendChild(addRow);
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-solid btn-manage-add';
+  addBtn.textContent = '＋ Agregar dominio';
+  addBtn.addEventListener('click', () => showDomainModal(null));
+  c.appendChild(addBtn);
 
-  document.getElementById('btn-ssl-add').addEventListener('click', async () => {
-    const domain   = document.getElementById('ssl-new-domain').value.trim();
-    const label    = document.getElementById('ssl-new-label').value.trim();
-    const empresa  = document.getElementById('ssl-new-empresa').value.trim();
-    const dnsAdmin = document.getElementById('ssl-new-dnsadmin').value.trim();
-    if (!domain) return;
-    await saveConfig([...domains, { domain, label: label || domain, empresa, dnsAdmin }]);
-  });
-
-  // Tabla editable
   const table = document.createElement('table');
   table.className = 'ssl-table data-table';
   table.innerHTML = `<thead><tr><th>DOMINIO</th><th>ETIQUETA</th><th>EMPRESA</th><th>ADMIN DNS</th><th></th></tr></thead>`;
   const tbody = document.createElement('tbody');
 
-  domains.forEach((entry, idx) => {
+  domains.forEach((entry) => {
     const tr = document.createElement('tr');
-    tr.dataset.idx = idx;
     tr.dataset.domain = entry.domain;
 
-    const tdDomain  = document.createElement('td');
-    const tdLabel   = document.createElement('td');
-    const tdEmpresa = document.createElement('td');
-    const tdDns     = document.createElement('td');
-    const tdActs    = document.createElement('td');
-    tdActs.style.whiteSpace = 'nowrap';
+    const archivedTag = entry.archived ? ` <span class="ssl-status-archived" style="font-size:0.62rem;font-weight:700;letter-spacing:0.06em">● ARCHIVADO</span>` : '';
+    tr.innerHTML =
+      `<td><span class="ssl-domain">${escHtml(entry.domain)}</span>${archivedTag}</td>` +
+      `<td><span class="ssl-label">${escHtml(entry.label)}</span></td>` +
+      `<td><span style="color:var(--text-faint)">${escHtml(entry.empresa || '—')}</span></td>` +
+      `<td><span style="color:var(--text-faint)">${escHtml(entry.dnsAdmin || '—')}</span></td>` +
+      `<td class="manage-actions"></td>`;
 
-    function viewMode() {
-      const archivedTag = entry.archived ? ` <span class="ssl-status-archived" style="font-size:0.62rem;font-weight:700;letter-spacing:0.06em">● ARCHIVADO</span>` : '';
-      tdDomain.innerHTML  = `<span class="ssl-domain">${escHtml(entry.domain)}</span>${archivedTag}`;
-      tdLabel.innerHTML   = `<span class="ssl-label">${escHtml(entry.label)}</span>`;
-      tdEmpresa.innerHTML = `<span style="color:var(--text-faint)">${escHtml(entry.empresa || '—')}</span>`;
-      tdDns.innerHTML     = `<span style="color:var(--text-faint)">${escHtml(entry.dnsAdmin || '—')}</span>`;
-      tdActs.innerHTML   = '';
+    const tdActs = tr.querySelector('.manage-actions');
 
-      const btnEdit = document.createElement('button');
-      btnEdit.className = 'btn btn-sm btn-ghost btn-ssl-action';
-      btnEdit.textContent = 'Editar';
-      btnEdit.addEventListener('click', editMode);
+    const btnEdit = document.createElement('button');
+    btnEdit.className = 'btn btn-sm btn-ghost btn-ssl-action';
+    btnEdit.textContent = 'Editar';
+    btnEdit.addEventListener('click', () => showDomainModal(entry));
 
-      const btnArchive = document.createElement('button');
-      btnArchive.className = 'btn btn-sm btn-warning btn-ssl-action';
-      btnArchive.textContent = entry.archived ? 'Desarchivar' : 'Archivar';
-      btnArchive.title = entry.archived
-        ? 'Volver a monitorear este dominio activamente'
-        : 'Sacar de las alertas — para problemas con decisión tomada (ej: dominio no se renueva)';
-      btnArchive.addEventListener('click', async () => {
-        let archivedNote = entry.archivedNote ?? '';
-        if (!entry.archived) {
-          archivedNote = window.prompt('Motivo del archivado (opcional):', archivedNote) ?? archivedNote;
-        }
-        const updated = domains.map((d, i) =>
-          i === idx ? { ...d, archived: !entry.archived, archivedNote: !entry.archived ? archivedNote : '' } : d
-        );
-        await saveConfig(updated);
-      });
+    const btnArchive = document.createElement('button');
+    btnArchive.className = 'btn btn-sm btn-warning btn-ssl-action';
+    btnArchive.textContent = entry.archived ? 'Desarchivar' : 'Archivar';
+    btnArchive.title = entry.archived
+      ? 'Volver a monitorear este dominio activamente'
+      : 'Sacar de las alertas — para problemas con decisión tomada (ej: dominio no se renueva)';
+    btnArchive.addEventListener('click', () => {
+      if (entry.archived) {
+        const updated = sslManageDomains.map(d => d.domain === entry.domain ? { ...d, archived: false, archivedNote: '' } : d);
+        saveConfig(updated);
+        return;
+      }
+      showArchiveModal(entry);
+    });
 
-      const btnDel = document.createElement('button');
-      btnDel.className = 'btn btn-sm btn-danger btn-ssl-action del';
-      btnDel.textContent = 'Eliminar';
-      btnDel.title = 'Eliminación definitiva del monitoreo';
-      btnDel.addEventListener('click', async () => {
-        const updated = domains.filter((_, i) => i !== idx);
-        await saveConfig(updated);
-      });
+    const btnDel = document.createElement('button');
+    btnDel.className = 'btn btn-sm btn-danger btn-ssl-action del';
+    btnDel.textContent = 'Eliminar';
+    btnDel.title = 'Eliminación definitiva del monitoreo';
+    btnDel.addEventListener('click', () => {
+      const updated = sslManageDomains.filter(d => d.domain !== entry.domain);
+      saveConfig(updated);
+    });
 
-      tdActs.appendChild(btnEdit);
-      tdActs.appendChild(btnArchive);
-      tdActs.appendChild(btnDel);
-    }
-
-    function editMode() {
-      tdDomain.innerHTML  = `<input class="ssl-input" value="${escHtml(entry.domain)}" id="edit-domain-${idx}" />`;
-      tdLabel.innerHTML   = `<input class="ssl-input" value="${escHtml(entry.label)}"  id="edit-label-${idx}"  />`;
-      tdEmpresa.innerHTML = `<input class="ssl-input" value="${escHtml(entry.empresa ?? '')}"  id="edit-empresa-${idx}"  />`;
-      tdDns.innerHTML     = `<input class="ssl-input" value="${escHtml(entry.dnsAdmin ?? '')}" id="edit-dnsadmin-${idx}" />`;
-      tdActs.innerHTML   = '';
-
-      const btnSave = document.createElement('button');
-      btnSave.className = 'btn btn-sm btn-success btn-ssl-action add';
-      btnSave.textContent = 'Guardar';
-      btnSave.addEventListener('click', async () => {
-        const newDomain   = document.getElementById(`edit-domain-${idx}`).value.trim();
-        const newLabel    = document.getElementById(`edit-label-${idx}`).value.trim();
-        const newEmpresa  = document.getElementById(`edit-empresa-${idx}`).value.trim();
-        const newDnsAdmin = document.getElementById(`edit-dnsadmin-${idx}`).value.trim();
-        if (!newDomain) return;
-        const updated = domains.map((d, i) =>
-          i === idx ? { ...d, domain: newDomain, label: newLabel || newDomain, empresa: newEmpresa, dnsAdmin: newDnsAdmin } : d
-        );
-        await saveConfig(updated);
-      });
-
-      const btnCancel = document.createElement('button');
-      btnCancel.className = 'btn btn-sm btn-ghost btn-ssl-action';
-      btnCancel.textContent = 'Cancelar';
-      btnCancel.addEventListener('click', viewMode);
-
-      tdActs.appendChild(btnSave);
-      tdActs.appendChild(btnCancel);
-    }
-
-    viewMode();
-    tr.appendChild(tdDomain);
-    tr.appendChild(tdLabel);
-    tr.appendChild(tdEmpresa);
-    tr.appendChild(tdDns);
-    tr.appendChild(tdActs);
+    tdActs.appendChild(btnEdit);
+    tdActs.appendChild(btnArchive);
+    tdActs.appendChild(btnDel);
     tbody.appendChild(tr);
   });
 
   table.appendChild(tbody);
   c.appendChild(table);
+}
+
+function showDomainModal(entry) {
+  openEditModal((box, close) => {
+    const isEdit = entry !== null;
+    box.innerHTML =
+      `<div class="manage-form">` +
+        `<div class="manage-form-title">${isEdit ? `Editar: ${escHtml(entry.domain)}` : 'Nuevo dominio'}</div>` +
+        formField('Dominio', 'ssl-f-domain', entry?.domain ?? '', 'dominio.com.ar') +
+        formField('Etiqueta', 'ssl-f-label', entry?.label ?? '', 'Etiqueta') +
+        formField('Empresa', 'ssl-f-empresa', entry?.empresa ?? '', 'Empresa') +
+        formField('Admin DNS', 'ssl-f-dnsadmin', entry?.dnsAdmin ?? '', '(opcional)') +
+        `<div class="manage-banner hidden" id="ssl-f-error"></div>` +
+        `<div class="manage-form-actions">` +
+          `<button class="btn btn-ghost btn-modal-cancel" id="btn-ssl-form-cancel">Cancelar</button>` +
+          `<button class="btn btn-primary btn-modal-ok" id="btn-ssl-form-save">${isEdit ? 'Guardar cambios' : 'Agregar'}</button>` +
+        `</div>` +
+      `</div>`;
+
+    box.querySelector('#btn-ssl-form-cancel').addEventListener('click', close);
+
+    box.querySelector('#btn-ssl-form-save').addEventListener('click', async () => {
+      const domain   = document.getElementById('ssl-f-domain').value.trim();
+      const label    = document.getElementById('ssl-f-label').value.trim();
+      const empresa  = document.getElementById('ssl-f-empresa').value.trim();
+      const dnsAdmin = document.getElementById('ssl-f-dnsadmin').value.trim();
+      if (!domain) return;
+
+      const updated = isEdit
+        ? sslManageDomains.map(d => d.domain === entry.domain
+            ? { ...d, domain, label: label || domain, empresa, dnsAdmin }
+            : d)
+        : [...sslManageDomains, { domain, label: label || domain, empresa, dnsAdmin }];
+
+      const ok = await saveConfig(updated);
+      if (ok) close();
+      else showManageBanner('ssl-f-error', 'Error al guardar — revisá la consola', true);
+    });
+  }, { size: 'compact' });
+}
+
+function showArchiveModal(entry) {
+  openEditModal((box, close) => {
+    box.innerHTML =
+      `<div class="manage-form">` +
+        `<div class="manage-form-title">Archivar ${escHtml(entry.domain)}</div>` +
+        `<label class="form-label" for="ssl-f-archive-note">Motivo del archivado (opcional)</label>` +
+        `<textarea class="form-textarea" id="ssl-f-archive-note" rows="4" placeholder="Ej: dominio vencido, no se renueva">${escHtml(entry.archivedNote ?? '')}</textarea>` +
+        `<div class="manage-form-actions">` +
+          `<button class="btn btn-ghost btn-modal-cancel" id="btn-ssl-archive-cancel">Cancelar</button>` +
+          `<button class="btn btn-warning btn-modal-ok" id="btn-ssl-archive-confirm">Archivar</button>` +
+        `</div>` +
+      `</div>`;
+
+    box.querySelector('#btn-ssl-archive-cancel').addEventListener('click', close);
+    box.querySelector('#btn-ssl-archive-confirm').addEventListener('click', async () => {
+      const archivedNote = document.getElementById('ssl-f-archive-note').value.trim();
+      const updated = sslManageDomains.map(d => d.domain === entry.domain ? { ...d, archived: true, archivedNote } : d);
+      const ok = await saveConfig(updated);
+      if (ok) close();
+    });
+  }, { size: 'compact' });
 }
 
 async function saveConfig(domains) {
@@ -457,8 +459,10 @@ async function saveConfig(domains) {
     if (!res.ok) throw new Error((await res.json()).error);
     const data = await res.json();
     renderManageTable(data.domains);
+    return true;
   } catch (e) {
-    alert(`Error al guardar: ${e.message}`);
+    console.error('[VCC] saveConfig SSL error:', e.message);
+    return false;
   }
 }
 
@@ -486,21 +490,6 @@ function toggleManageMode() {
   btnR.classList.toggle('hidden', sslManageMode);
 
   if (sslManageMode) loadManage();
-}
-
-// Abre "Gestionar" (si no está abierto) y lleva la vista a la fila de un dominio puntual —
-// evita que editar un dominio archivado implique buscarlo a mano en la tabla completa.
-async function openSslManageAndFocus(domain) {
-  if (!sslManageMode) toggleManageMode();
-  else await loadManage();
-
-  setTimeout(() => {
-    const row = document.querySelector(`#ssl-manage-container tr[data-domain="${CSS.escape(domain)}"]`);
-    if (!row) return;
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    row.classList.add('ssl-row-flash');
-    setTimeout(() => row.classList.remove('ssl-row-flash'), 1500);
-  }, 150);
 }
 
 export function initSSL() {
