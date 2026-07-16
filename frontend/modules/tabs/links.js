@@ -50,12 +50,18 @@ function tipoColorOf(nombre) {
   return COLOR_VAR[t?.color] ?? 'var(--accent)';
 }
 
-export function filterLinks(links, { tipo, estado, favOnly }) {
-  return links.filter(l =>
-    (!tipo || l.tipo === tipo) &&
-    (!estado || l.estado === estado) &&
-    (!favOnly || l.favorito === true)
-  );
+export function filterLinks(links, { tipo, estado, favOnly, texto } = {}) {
+  const needle = (texto ?? '').trim().toLowerCase();
+  return links.filter(l => {
+    if (tipo && l.tipo !== tipo) return false;
+    if (estado && l.estado !== estado) return false;
+    if (favOnly && l.favorito !== true) return false;
+    if (needle) {
+      const haystack = `${l.titulo} ${l.url} ${l.nota ?? ''} ${(l.tags ?? []).join(' ')}`.toLowerCase();
+      if (!haystack.includes(needle)) return false;
+    }
+    return true;
+  });
 }
 
 function buildLinkCard(link) {
