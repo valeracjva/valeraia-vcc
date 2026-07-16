@@ -1,5 +1,5 @@
 import { get, apiFetch } from '../core/api.js';
-import { buildAccordion, escHtml, formField, showManageBanner } from '../core/dom.js';
+import { buildAccordion, escHtml, formField, openEditModal, showManageBanner } from '../core/dom.js';
 
 // === M9b — MCPs ===
 const HIDDEN_MCPS_KEY = 'vcc-hidden-mcps';
@@ -205,7 +205,6 @@ function renderMcpManage() {
     `</div>` +
     `<div class="manage-banner hidden" id="mcp-manage-banner"></div>` +
     `<button class="btn btn-solid btn-manage-add" id="btn-mcp-add">＋ Agregar MCP</button>` +
-    `<div id="mcp-form-container"></div>` +
     `<table class="manage-table data-table">` +
       `<thead><tr>` +
         `<th>NOMBRE</th><th>COMANDO</th><th>ESTADO</th><th></th>` +
@@ -308,17 +307,14 @@ function renderMcpManage() {
   });
 
   container.querySelector('#btn-mcp-add').addEventListener('click', () => {
-    const fc = document.getElementById('mcp-form-container');
-    showMcpForm(null, fc, () => { fc.innerHTML = ''; });
+    showMcpModal(null);
   });
 
   container.querySelectorAll('[data-edit-mcp]').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.editMcp;
       const mcp  = mcpAllData.mcps.find(m => m.name === name);
-      if (!mcp) return;
-      const fc = document.getElementById('mcp-form-container');
-      showMcpForm(mcp, fc, () => { fc.innerHTML = ''; });
+      if (mcp) showMcpModal(mcp);
     });
   });
 
@@ -362,17 +358,7 @@ function renderMcpManage() {
 }
 
 function showMcpModal(mcp) {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay infra-edit-modal';
-  const box = document.createElement('div');
-  box.className = 'modal-box infra-edit-modal-box';
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-  // Regla VCC: los modales nunca cierran con clic afuera -- solo Cancelar/Guardar/X o Escape.
-  const onKeydown = (e) => { if (e.key === 'Escape') close(); };
-  const close = () => { document.removeEventListener('keydown', onKeydown); overlay.remove(); };
-  document.addEventListener('keydown', onKeydown);
-  showMcpForm(mcp, box, close);
+  openEditModal((box, close) => showMcpForm(mcp, box, close));
 }
 
 function showMcpForm(mcp, container, onClose) {
