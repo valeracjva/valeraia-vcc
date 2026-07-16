@@ -1,7 +1,7 @@
 import { API_BASE } from '../core/constants.js';
 import { get } from '../core/api.js';
 import { publishActivityNote } from '../core/activity-rail.js';
-import { escHtml } from '../core/dom.js';
+import { escHtml, openEditModal, showManageBanner } from '../core/dom.js';
 
 let confirmDialogRef = null;
 let openJsonModalRef = null;
@@ -19,7 +19,6 @@ export function updateTunnelDots(tunnels) {
 // === M6 — Túneles SSH ===
 let tunnelsBusy    = {};
 let tunnelManageMode = false;
-let tunnelAdhocMode  = false;
 
 // ── Render cards ──────────────────────────────────────────────────────────────
 
@@ -265,91 +264,113 @@ async function toggleTunnel(port, isActive, isProd) {
 
 // ── ABM — Gestionar presets ───────────────────────────────────────────────────
 
-function inp(type, val, placeholder, cls = '') {
-  return `<input type="${type}" class="ssl-input ${cls}" value="${escHtml(String(val ?? ''))}" placeholder="${escHtml(placeholder)}">`;
-}
+let tunnelsManageSaved = [];
 
 function renderManageTunnels(tunnels) {
   // Filtrar ad-hoc — solo se gestionan los presets guardados
-  const saved = tunnels.filter(t => !t.adhoc);
-  const mc    = document.getElementById('tunnels-manage-container');
+  tunnelsManageSaved = tunnels.filter(t => !t.adhoc);
+  const mc = document.getElementById('tunnels-manage-container');
   mc.innerHTML = '';
 
-  const wrap = document.createElement('div');
-  wrap.className = 'ssl-manage-wrap';
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-solid btn-manage-add';
+  addBtn.textContent = '＋ Agregar túnel';
+  addBtn.addEventListener('click', () => showTunnelModal(null));
+  mc.appendChild(addBtn);
 
   const table = document.createElement('table');
-  table.className = 'ssl-manage-table data-table';
+  table.className = 'manage-table data-table';
   table.innerHTML =
     `<thead><tr>` +
-    `<th>Puerto</th><th>Nombre</th><th>Remote</th><th>Clave SSH</th>` +
-    `<th>Forward</th><th>Prod</th><th></th>` +
+    `<th>Puerto</th><th>Nombre</th><th>Remote</th><th>Forward</th><th>Prod</th><th></th>` +
     `</tr></thead>`;
 
   const tbody = document.createElement('tbody');
-  for (const t of saved) {
+  for (const t of tunnelsManageSaved) {
     const tr = document.createElement('tr');
     tr.innerHTML =
-      `<td>${inp('number', t.port, '3308', 'port-inp')}</td>` +
-      `<td>${inp('text', t.name, 'Nombre')}</td>` +
-      `<td>${inp('text', t.remote, 'user@host')}</td>` +
-      `<td><input type="text" list="ssh-keys-list" class="ssl-input" value="${escHtml(t.key)}" placeholder=".ssh/key"></td>` +
-      `<td>${inp('text', t.forward, 'host:3306')}</td>` +
-      `<td style="text-align:center"><input type="checkbox" ${t.prod ? 'checked' : ''}></td>` +
-      `<td><button class="btn btn-sm btn-danger btn-ssl-action del" title="Eliminar">✕</button></td>`;
-    tr.querySelector('.del').addEventListener('click', () => tr.remove());
+      `<td><code>${t.port}</code></td>` +
+      `<td>${escHtml(t.name)}</td>` +
+      `<td>${escHtml(t.remote)}</td>` +
+      `<td>${escHtml(t.forward)}</td>` +
+      `<td>${t.prod ? 'Sí' : '—'}</td>` +
+      `<td class="manage-actions"></td>`;
+    const tdActs = tr.querySelector('.manage-actions');
+
+    const btnEdit = document.createElement('button');
+    btnEdit.className = 'btn btn-sm btn-ghost btn-manage-edit';
+    btnEdit.textContent = 'Editar';
+    btnEdit.addEventListener('click', () => showTunnelModal(t));
+
+    const btnDel = document.createElement('button');
+    btnDel.className = 'btn btn-sm btn-danger btn-manage-del';
+    btnDel.textContent = 'Eliminar';
+    btnDel.addEventListener('click', async () => {
+      const ok = await confirmDialogRef(`¿Eliminar el túnel "${t.name}" (puerto ${t.port})?`, 'Esta acción no se puede deshacer.', true);
+      if (!ok) return;
+      const updated = tunnelsManageSaved.filter(x => x.port !== t.port);
+      await saveTunnelConfig(updated);
+    });
+
+    tdActs.appendChild(btnEdit);
+    tdActs.appendChild(btnDel);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
-
-  // Fila para agregar
-  const addRow = document.createElement('div');
-  addRow.className = 'ssl-add-row';
-  const addBtn = document.createElement('button');
-  addBtn.className = 'btn btn-sm btn-primary btn-ssl-action add';
-  addBtn.textContent = '＋ Agregar túnel';
-  addBtn.addEventListener('click', () => {
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      `<td>${inp('number', '', '3311', 'port-inp')}</td>` +
-      `<td>${inp('text', '', 'Nombre')}</td>` +
-      `<td>${inp('text', '', 'user@host')}</td>` +
-      `<td><input type="text" list="ssh-keys-list" class="ssl-input" value="" placeholder=".ssh/key"></td>` +
-      `<td>${inp('text', '', 'host:3306')}</td>` +
-      `<td style="text-align:center"><input type="checkbox"></td>` +
-      `<td><button class="btn btn-sm btn-danger btn-ssl-action del" title="Eliminar">✕</button></td>`;
-    tr.querySelector('.del').addEventListener('click', () => tr.remove());
-    tbody.appendChild(tr);
-  });
-  addRow.appendChild(addBtn);
-
-  const saveBtn = document.createElement('button');
-  saveBtn.className   = 'btn btn-sm btn-success btn-ssl-action add';
-  saveBtn.style.marginLeft = '0.5rem';
-  saveBtn.textContent = '✓ Guardar';
-  saveBtn.addEventListener('click', () => saveTunnelConfig(tbody));
-  addRow.appendChild(saveBtn);
-
-  wrap.appendChild(table);
-  wrap.appendChild(addRow);
-  mc.appendChild(wrap);
+  mc.appendChild(table);
 }
 
-async function saveTunnelConfig(tbody) {
-  const rows = [...tbody.querySelectorAll('tr')];
-  const tunnels = rows.map(tr => {
-    const [portEl, nameEl, remoteEl, keyEl, forwardEl, prodEl] = tr.querySelectorAll('input');
-    return {
-      port:    parseInt(portEl.value, 10),
-      name:    nameEl.value.trim(),
-      desc:    '',
-      remote:  remoteEl.value.trim(),
-      key:     keyEl.value.trim(),
-      forward: forwardEl.value.trim(),
-      prod:    prodEl.checked,
-    };
-  });
+function showTunnelModal(tunnel) {
+  openEditModal((box, close) => {
+    const isEdit = tunnel !== null;
+    box.innerHTML =
+      `<div class="manage-form">` +
+        `<div class="manage-form-title">${isEdit ? `Editar: ${escHtml(tunnel.name)}` : 'Nuevo túnel'}</div>` +
+        `<div class="manage-form-grid">` +
+          `<div class="form-field"><label class="form-label" for="tun-f-port">Puerto</label><input class="form-input" type="number" id="tun-f-port" value="${isEdit ? tunnel.port : ''}" placeholder="3311"></div>` +
+          `<div class="form-field"><label class="form-label" for="tun-f-name">Nombre</label><input class="form-input" id="tun-f-name" value="${escHtml(tunnel?.name ?? '')}" placeholder="Nombre"></div>` +
+          `<div class="form-field"><label class="form-label" for="tun-f-remote">Remote</label><input class="form-input" id="tun-f-remote" value="${escHtml(tunnel?.remote ?? '')}" placeholder="user@host"></div>` +
+          `<div class="form-field"><label class="form-label" for="tun-f-key">Clave SSH</label><input class="form-input" list="ssh-keys-list" id="tun-f-key" value="${escHtml(tunnel?.key ?? '')}" placeholder=".ssh/key"></div>` +
+          `<div class="form-field"><label class="form-label" for="tun-f-forward">Forward</label><input class="form-input" id="tun-f-forward" value="${escHtml(tunnel?.forward ?? '')}" placeholder="host:3306"></div>` +
+        `</div>` +
+        `<label class="form-toggle-row">` +
+          `<input type="checkbox" id="tun-f-prod"${tunnel?.prod ? ' checked' : ''}>` +
+          `<span class="form-toggle-label">Producción</span>` +
+        `</label>` +
+        `<div class="manage-banner hidden" id="tun-f-error"></div>` +
+        `<div class="manage-form-actions">` +
+          `<button class="btn btn-ghost btn-modal-cancel" id="btn-tun-form-cancel">Cancelar</button>` +
+          `<button class="btn btn-primary btn-modal-ok" id="btn-tun-form-save">${isEdit ? 'Guardar cambios' : 'Agregar'}</button>` +
+        `</div>` +
+      `</div>`;
 
+    box.querySelector('#btn-tun-form-cancel').addEventListener('click', close);
+
+    box.querySelector('#btn-tun-form-save').addEventListener('click', async () => {
+      const port    = parseInt(document.getElementById('tun-f-port').value, 10);
+      const name    = document.getElementById('tun-f-name').value.trim();
+      const remote  = document.getElementById('tun-f-remote').value.trim();
+      const key     = document.getElementById('tun-f-key').value.trim();
+      const forward = document.getElementById('tun-f-forward').value.trim();
+      const prod    = document.getElementById('tun-f-prod').checked;
+
+      if (!port || !name || !remote || !forward) {
+        showManageBanner('tun-f-error', 'Puerto, nombre, remote y forward son requeridos', true);
+        return;
+      }
+
+      const nuevo = { port, name, desc: '', remote, key, forward, prod };
+      const updated = isEdit
+        ? tunnelsManageSaved.map(t => t.port === tunnel.port ? nuevo : t)
+        : [...tunnelsManageSaved, nuevo];
+
+      const ok = await saveTunnelConfig(updated);
+      if (ok) close();
+    });
+  }, { size: 'standard' });
+}
+
+async function saveTunnelConfig(tunnels) {
   try {
     const res  = await fetch(`${API_BASE}/api/tunnels/config`, {
       method: 'PUT',
@@ -357,12 +378,18 @@ async function saveTunnelConfig(tbody) {
       body: JSON.stringify({ tunnels }),
     });
     const body = await res.json();
-    if (!res.ok) { showTunnelBanner(`Error: ${body.error}`, true); return; }
+    if (!res.ok) { showTunnelBanner(`Error: ${body.error}`, true); return false; }
     showTunnelBanner('Configuración guardada', false);
-    toggleManageTunnels(false);
     await loadTunnels();
+    const mc = document.getElementById('tunnels-manage-container');
+    if (mc && !mc.classList.contains('hidden')) {
+      const data = await get('/api/tunnels/config').catch(() => []);
+      renderManageTunnels(data);
+    }
+    return true;
   } catch {
     showTunnelBanner('Error al guardar', true);
+    return false;
   }
 }
 
@@ -373,10 +400,6 @@ async function toggleManageTunnels(force) {
   const btn  = document.getElementById('btn-tunnel-manage');
 
   if (tunnelManageMode) {
-    tunnelAdhocMode = false;
-    document.getElementById('tunnels-adhoc-container').classList.add('hidden');
-    document.getElementById('btn-tunnel-adhoc').textContent = '＋ Ad-hoc';
-
     const data = await get('/api/tunnels/config').catch(() => []);
     renderManageTunnels(data);
     main.classList.add('hidden');
@@ -391,28 +414,26 @@ async function toggleManageTunnels(force) {
 
 // ── Ad-hoc — túnel de un solo uso ────────────────────────────────────────────
 
-function renderAdhocForm() {
-  const ac = document.getElementById('tunnels-adhoc-container');
-  ac.innerHTML = '';
+function showAdhocModal() {
+  openEditModal((box) => {
+    box.innerHTML =
+      `<div class="manage-form">` +
+        `<div class="manage-form-title">Túnel ad-hoc</div>` +
+        `<div class="manage-form-grid">` +
+          `<div class="form-field"><label class="form-label" for="adhoc-port">Puerto local</label><input type="number" id="adhoc-port" class="form-input" placeholder="3311" min="1024" max="65535"></div>` +
+          `<div class="form-field"><label class="form-label" for="adhoc-name">Nombre (opcional)</label><input type="text" id="adhoc-name" class="form-input" placeholder="Mi túnel"></div>` +
+          `<div class="form-field"><label class="form-label" for="adhoc-remote">Remote (user@host)</label><input type="text" id="adhoc-remote" class="form-input" placeholder="ubuntu@10.145.2.26"></div>` +
+          `<div class="form-field"><label class="form-label" for="adhoc-key">Clave SSH</label><input type="text" id="adhoc-key" list="ssh-keys-list" class="form-input" placeholder=".ssh/srv-appstest.key"></div>` +
+          `<div class="form-field"><label class="form-label" for="adhoc-forward">Forward (host:port)</label><input type="text" id="adhoc-forward" class="form-input" placeholder="127.0.0.1:3306"></div>` +
+        `</div>` +
+        `<div class="manage-form-actions">` +
+          `<span class="adhoc-status" id="adhoc-status"></span>` +
+          `<button class="btn btn-primary btn-modal-ok" id="btn-adhoc-submit">Abrir túnel</button>` +
+        `</div>` +
+      `</div>`;
 
-  const form = document.createElement('div');
-  form.className = 'tunnel-adhoc-form';
-  form.innerHTML =
-    `<div class="tunnel-adhoc-title">Túnel ad-hoc</div>` +
-    `<div class="tunnel-adhoc-grid">` +
-      `<label>Puerto local<input type="number" id="adhoc-port" class="ssl-input" placeholder="3311" min="1024" max="65535"></label>` +
-      `<label>Nombre (opcional)<input type="text" id="adhoc-name" class="ssl-input" placeholder="Mi túnel"></label>` +
-      `<label>Remote (user@host)<input type="text" id="adhoc-remote" class="ssl-input" placeholder="ubuntu@10.145.2.26"></label>` +
-      `<label>Clave SSH<input type="text" id="adhoc-key" list="ssh-keys-list" class="ssl-input" placeholder=".ssh/srv-appstest.key"></label>` +
-      `<label>Forward (host:port)<input type="text" id="adhoc-forward" class="ssl-input" placeholder="127.0.0.1:3306"></label>` +
-    `</div>` +
-    `<div class="tunnel-adhoc-actions">` +
-      `<button class="btn btn-primary btn-ssl-action add" id="btn-adhoc-submit">Abrir túnel</button>` +
-      `<span class="adhoc-status" id="adhoc-status"></span>` +
-    `</div>`;
-
-  form.querySelector('#btn-adhoc-submit').addEventListener('click', submitAdhoc);
-  ac.appendChild(form);
+    box.querySelector('#btn-adhoc-submit').addEventListener('click', submitAdhoc);
+  }, { size: 'standard' });
 }
 
 async function submitAdhoc() {
@@ -437,8 +458,8 @@ async function submitAdhoc() {
     else if (body.status === 'timeout') { status.textContent = '⚠ Timeout — ¿VPN activa?'; }
     else {
       status.textContent = '✓ Abierto';
-      toggleAdhocForm(false);
       await loadTunnels();
+      document.querySelector('.modal-overlay.infra-edit-modal')?.remove();
     }
   } catch {
     status.textContent = 'Error de conexión';
@@ -447,24 +468,8 @@ async function submitAdhoc() {
   document.getElementById('btn-adhoc-submit').disabled = false;
 }
 
-function toggleAdhocForm(force) {
-  tunnelAdhocMode = force !== undefined ? force : !tunnelAdhocMode;
-  const ac  = document.getElementById('tunnels-adhoc-container');
-  const btn = document.getElementById('btn-tunnel-adhoc');
-
-  if (tunnelAdhocMode) {
-    // Cerrar manage si estaba abierto
-    tunnelManageMode = false;
-    document.getElementById('tunnels-manage-container').classList.add('hidden');
-    document.getElementById('btn-tunnel-manage').textContent = '⚙ Gestionar';
-
-    renderAdhocForm();
-    ac.classList.remove('hidden');
-    btn.textContent = '✕ Cerrar';
-  } else {
-    ac.classList.add('hidden');
-    btn.textContent = '＋ Ad-hoc';
-  }
+function toggleAdhocForm() {
+  showAdhocModal();
 }
 
 
