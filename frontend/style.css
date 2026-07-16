@@ -2394,6 +2394,10 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
 .modal-box.infra-edit-modal-box { width: min(920px, 96vw); max-height: 88vh; overflow-y: auto; }
 /* Modal mas ancho -> permite 3-4 columnas reales en vez de 1-2 con el mismo minmax(220px) global */
 .infra-edit-modal-box .manage-form-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+/* Ancho compacto -- formularios chicos (2-4 campos: Links, Tipos, dominio SSL, motivo de
+   archivado) no necesitan los 920px del estándar, quedan con espacio vacío de sobra. */
+.modal-box.infra-edit-modal-box.infra-edit-modal-compact { width: min(480px, 92vw); }
+.infra-edit-modal-compact .manage-form-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 
 /* Notas inline */
 .infra-notas {

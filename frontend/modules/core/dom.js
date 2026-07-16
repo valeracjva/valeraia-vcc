@@ -89,3 +89,21 @@ export function showManageBanner(id, msg, isError = false) {
   el.classList.remove('hidden');
   setTimeout(() => el.classList.add('hidden'), 5000);
 }
+
+export function openEditModal(renderInto, { size = 'standard' } = {}) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay infra-edit-modal';
+  const box = document.createElement('div');
+  box.className = size === 'compact'
+    ? 'modal-box infra-edit-modal-box infra-edit-modal-compact'
+    : 'modal-box infra-edit-modal-box';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  // Regla VCC: los modales de edición nunca cierran con clic afuera -- solo Escape o los
+  // botones Cancelar/Guardar/X (formularios largos, un clic accidental no debe perder lo tipeado).
+  const onKeydown = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { document.removeEventListener('keydown', onKeydown); overlay.remove(); };
+  document.addEventListener('keydown', onKeydown);
+  renderInto(box, close);
+  return close;
+}
