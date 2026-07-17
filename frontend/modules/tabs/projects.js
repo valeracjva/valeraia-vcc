@@ -1,5 +1,6 @@
 import { API_BASE } from '../core/constants.js';
 import { buildAccordion, escHtml, openEditModal } from '../core/dom.js';
+import { loadState, saveState } from '../core/persist.js';
 
 // === M2 — Proyectos ===
 const CLIENT_LABELS = {
@@ -27,6 +28,7 @@ const ENV_RISK = {
 let activeProjectId = null;
 let runtimeData = null;
 let projectsGroupBy = 'client';
+const PROJECTS_GROUPBY_KEY = 'vcc-projects-groupby';
 let registryData = null;
 let registryHash = null;
 let projectManageMode = false;
@@ -770,6 +772,15 @@ function toggleProjectManagement(force) {
 export function initProjects({ onUpdate, confirmDialog } = {}) {
   refreshApp = onUpdate ?? null;
   confirmDialogRef = confirmDialog ?? null;
+
+  // Restaura el agrupamiento elegido la ultima vez -- antes siempre volvia a "Por cliente" al recargar.
+  projectsGroupBy = loadState(PROJECTS_GROUPBY_KEY, 'client');
+  const savedProjectsGroupBtn = document.querySelector(`.btn-projects-group[data-group="${projectsGroupBy}"]`);
+  if (savedProjectsGroupBtn) {
+    document.querySelectorAll('.btn-projects-group').forEach(b => b.classList.remove('active'));
+    savedProjectsGroupBtn.classList.add('active');
+  }
+
   document.getElementById('btn-project-manage').addEventListener('click', () => {
     toggleProjectManagement();
   });
@@ -783,6 +794,7 @@ export function initProjects({ onUpdate, confirmDialog } = {}) {
       document.querySelectorAll('.btn-projects-group').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       projectsGroupBy = btn.dataset.group;
+      saveState(PROJECTS_GROUPBY_KEY, projectsGroupBy);
       if (registryData) renderProjects(registryData.projects);
     });
   });
