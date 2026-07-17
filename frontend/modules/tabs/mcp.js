@@ -1,8 +1,10 @@
 import { get, apiFetch } from '../core/api.js';
 import { buildAccordion, escHtml, formField, openEditModal, showManageBanner } from '../core/dom.js';
+import { loadState, saveState } from '../core/persist.js';
 
 // === M9b — MCPs ===
 const HIDDEN_MCPS_KEY = 'vcc-hidden-mcps';
+const MCP_GROUPBY_KEY = 'vcc-mcp-groupby';
 let mcpGroupBy = 'tipo';
 let mcpAllData = { mcps: [], sshServers: [] };
 let confirmDialogRef = null;
@@ -433,6 +435,14 @@ function showMcpForm(mcp, container, onClose) {
 export function initMcp({ confirmDialog } = {}) {
   confirmDialogRef = confirmDialog ?? null;
 
+  // Restaura el agrupamiento elegido la ultima vez -- antes siempre volvia a "Tipo" al recargar.
+  mcpGroupBy = loadState(MCP_GROUPBY_KEY, 'tipo');
+  const savedMcpGroupBtn = document.querySelector(`.btn-mcp-group[data-group="${mcpGroupBy}"]`);
+  if (savedMcpGroupBtn) {
+    document.querySelectorAll('.btn-mcp-group').forEach(b => b.classList.remove('active'));
+    savedMcpGroupBtn.classList.add('active');
+  }
+
   document.getElementById('btn-mcp-refresh')?.addEventListener('click', () => loadMcp(true));
 
   document.getElementById('btn-mcp-show-hidden')?.addEventListener('click', () => {
@@ -461,6 +471,7 @@ export function initMcp({ confirmDialog } = {}) {
       document.querySelectorAll('.btn-mcp-group').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       mcpGroupBy = btn.dataset.group;
+      saveState(MCP_GROUPBY_KEY, mcpGroupBy);
       renderMcpView();
     });
   });
