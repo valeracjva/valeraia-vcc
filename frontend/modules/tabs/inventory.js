@@ -52,6 +52,7 @@ function renderFieldsPanel() {
 }
 let infraGroupBy         = 'empresa';
 let infraFilterMonitored = true;
+let infraFilterTexto     = '';
 let infraAllServers      = [];
 const infraMetricsCache  = {}; // serverId → último resultado
 let confirmDialogRef     = null;
@@ -259,9 +260,10 @@ function renderInventoryList(servers) {
 function renderInventory(servers) {
   const c = document.getElementById('infra-container');
   const hidden = getHidden();
-  const pool   = infraFilterMonitored ? servers.filter(s => s.monitoreado) : servers;
-  const visible = pool.filter(s => !hidden.has(s.id));
-  const hiddenCount = pool.length - visible.length;
+  const pool      = infraFilterMonitored ? servers.filter(s => s.monitoreado) : servers;
+  const notHidden = pool.filter(s => !hidden.has(s.id));
+  const hiddenCount = pool.length - notHidden.length;
+  const visible = filterServers(notHidden, infraFilterTexto);
 
   const showBtn = document.getElementById('btn-infra-show-hidden');
   if (showBtn) {
@@ -633,6 +635,22 @@ export function initInventory({ confirmDialog } = {}) {
   // Mostrar ocultos
   document.getElementById('btn-infra-show-hidden')?.addEventListener('click', () => {
     localStorage.removeItem(HIDDEN_SERVERS_KEY);
+    renderInventory(infraAllServers);
+  });
+
+  // Búsqueda de servidores
+  const infraSearchInput = document.getElementById('infra-search');
+  const infraSearchClear = document.getElementById('infra-search-clear');
+  infraSearchInput?.addEventListener('input', (e) => {
+    infraFilterTexto = e.target.value;
+    infraSearchClear?.classList.toggle('hidden', infraFilterTexto === '');
+    renderInventory(infraAllServers);
+  });
+  infraSearchClear?.addEventListener('click', () => {
+    infraFilterTexto = '';
+    if (infraSearchInput) infraSearchInput.value = '';
+    infraSearchClear.classList.add('hidden');
+    infraSearchInput?.focus();
     renderInventory(infraAllServers);
   });
 
