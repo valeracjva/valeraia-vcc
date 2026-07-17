@@ -1,6 +1,7 @@
 import { get, apiFetch } from '../core/api.js';
 import { publishActivityNote } from '../core/activity-rail.js';
 import { buildAccordion, escHtml, formField, formPasswordField, formSelect, openEditModal, showManageBanner } from '../core/dom.js';
+import { loadState, saveState } from '../core/persist.js';
 
 // === M4 — Inventario Infra ===
 const RISK_COLORS = {
@@ -593,6 +594,7 @@ function showInventoryForm(srv, container, onClose) {
 }
 
 const GROUP_BY_KEY = 'vcc-infra-groupby';
+const INFRA_FILTERS_KEY = 'vcc-infra-filters';
 
 export function initInventory({ confirmDialog } = {}) {
   confirmDialogRef = confirmDialog ?? null;
@@ -607,6 +609,23 @@ export function initInventory({ confirmDialog } = {}) {
       savedBtn.classList.add('active');
       infraGroupBy = savedGroup;
     }
+  }
+
+  // Restaura filtro de texto y toggle "solo monitoreados" -- antes siempre volvian a
+  // default (sin texto, monitoreados=true) al recargar.
+  const savedFilters = loadState(INFRA_FILTERS_KEY, { texto: '', monitored: true });
+  infraFilterTexto = savedFilters.texto;
+  infraFilterMonitored = savedFilters.monitored;
+
+  const infraMonitoredBtnInit = document.getElementById('btn-infra-monitored');
+  if (infraMonitoredBtnInit) {
+    infraMonitoredBtnInit.classList.toggle('active', infraFilterMonitored);
+    infraMonitoredBtnInit.textContent = infraFilterMonitored ? '● Monitoreados' : '○ Todos';
+  }
+  const infraSearchInputInit = document.getElementById('infra-search');
+  if (infraSearchInputInit && infraFilterTexto) {
+    infraSearchInputInit.value = infraFilterTexto;
+    document.getElementById('infra-search-clear')?.classList.remove('hidden');
   }
 
   // Group-by buttons
@@ -629,6 +648,7 @@ export function initInventory({ confirmDialog } = {}) {
     const btn = document.getElementById('btn-infra-monitored');
     btn.classList.toggle('active', infraFilterMonitored);
     btn.textContent = infraFilterMonitored ? '● Monitoreados' : '○ Todos';
+    saveState(INFRA_FILTERS_KEY, { texto: infraFilterTexto, monitored: infraFilterMonitored });
     renderInventory(infraAllServers);
   });
 
@@ -644,6 +664,7 @@ export function initInventory({ confirmDialog } = {}) {
   infraSearchInput?.addEventListener('input', (e) => {
     infraFilterTexto = e.target.value;
     infraSearchClear?.classList.toggle('hidden', infraFilterTexto === '');
+    saveState(INFRA_FILTERS_KEY, { texto: infraFilterTexto, monitored: infraFilterMonitored });
     renderInventory(infraAllServers);
   });
   infraSearchClear?.addEventListener('click', () => {
@@ -651,6 +672,7 @@ export function initInventory({ confirmDialog } = {}) {
     if (infraSearchInput) infraSearchInput.value = '';
     infraSearchClear.classList.add('hidden');
     infraSearchInput?.focus();
+    saveState(INFRA_FILTERS_KEY, { texto: infraFilterTexto, monitored: infraFilterMonitored });
     renderInventory(infraAllServers);
   });
 
