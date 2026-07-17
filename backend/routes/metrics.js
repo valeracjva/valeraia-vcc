@@ -7,6 +7,7 @@ import path from 'path';
 import { timingSafeEqual } from 'crypto';
 import { Client } from 'ssh2';
 import { PATHS } from '../config.js';
+import { mapWithConcurrency } from '../lib/concurrency.js';
 
 export async function getMonitoredServers() {
   const raw = await readFile(PATHS.serversConfig, 'utf8');
@@ -32,6 +33,7 @@ export async function getMonitoredServers() {
 const router = Router();
 
 const CACHE_TTL_MS = 60_000;
+const METRICS_CONCURRENCY = 8;
 const HISTORY_MAX  = 20; // ~20 min de trend a intervalo de refresco de 60s
 const cache = {}; // { serverId: { ts, data, history: [{ts,cpu,ram,disk}] } }
 
@@ -292,7 +294,7 @@ export function getCachedMetrics(serverId) {
   return { ...entry.data, checkedAt: entry.ts };
 }
 
-// GET /api/metrics — todos los servidores en paralelo
+// GET /api/metrics — todos los servidores, en batches de METRICS_CONCURRENCY a la vez
 router.get('/', async (req, res) => {
   const force = req.query.force === '1';
   const now   = Date.now();
@@ -300,8 +302,8 @@ router.get('/', async (req, res) => {
   const MONITORED = await getMonitoredServers();
   const ids = Object.keys(MONITORED);
 
-  const results = await Promise.allSettled(
-    ids.map((id) => fetchWithHistory(id, MONITORED[id], force, now))
+  const results = await mapWithConcurrency(
+    ids, METRICS_CONCURRENCY, (id) => fetchWithHistory(id, MONITORED[id], force, now)
   );
 
   res.json({
@@ -329,8 +331,8 @@ export async function pollAllServers(force = false) {
   const now = Date.now();
   const MONITORED = await getMonitoredServers();
   const ids = Object.keys(MONITORED);
-  const results = await Promise.allSettled(
-    ids.map((id) => fetchWithHistory(id, MONITORED[id], force, now))
+  const results = await mapWithConcurrency(
+    ids, METRICS_CONCURRENCY, (id) => fetchWithHistory(id, MONITORED[id], force, now)
   );
   return ids.map((id, i) => {
     const r = results[i];
