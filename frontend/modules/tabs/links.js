@@ -1,5 +1,6 @@
 import { get, apiFetch } from '../core/api.js';
 import { escHtml, formField, formSelect, openEditModal, showManageBanner } from '../core/dom.js';
+import { loadState, saveState } from '../core/persist.js';
 
 const ESTADO_COLOR = {
   Pendiente:    'var(--accent)',
@@ -49,6 +50,8 @@ let linksFilterEstado = '';
 let linksFilterFavOnly = false;
 let linksFilterTexto = '';
 let confirmDialogRef = null;
+
+const LINKS_FILTERS_KEY = 'vcc-links-filters';
 
 function truncate(str, max) {
   return str.length > max ? str.slice(0, max - 1) + '…' : str;
@@ -180,6 +183,26 @@ export async function loadLinks() {
 export function initLinks({ confirmDialog } = {}) {
   confirmDialogRef = confirmDialog ?? null;
 
+  // Restaura los filtros de la ultima visita -- antes siempre volvia a "Todo" al recargar.
+  const savedFilters = loadState(LINKS_FILTERS_KEY, { tipo: '', estado: '', favOnly: false, texto: '' });
+  linksFilterTipo = savedFilters.tipo;
+  linksFilterEstado = savedFilters.estado;
+  linksFilterFavOnly = savedFilters.favOnly;
+  linksFilterTexto = savedFilters.texto;
+
+  if (linksFilterEstado) {
+    document.querySelectorAll('.btn-links-estado').forEach(b =>
+      b.classList.toggle('active', b.dataset.estado === linksFilterEstado));
+  }
+  if (linksFilterFavOnly) {
+    document.getElementById('btn-links-fav-only')?.classList.add('active');
+  }
+  const linksSearchInputInit = document.getElementById('links-search');
+  if (linksSearchInputInit && linksFilterTexto) {
+    linksSearchInputInit.value = linksFilterTexto;
+    document.getElementById('links-search-clear')?.classList.remove('hidden');
+  }
+
   document.getElementById('btn-links-refresh')?.addEventListener('click', () => loadLinks());
 
   // Delegado -- los botones de tipo se regeneran dinámicamente (CRUD de tipos)
@@ -189,6 +212,7 @@ export function initLinks({ confirmDialog } = {}) {
     document.querySelectorAll('.btn-links-tipo').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     linksFilterTipo = btn.dataset.tipo;
+    saveState(LINKS_FILTERS_KEY, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly, texto: linksFilterTexto });
     renderLinksView();
   });
 
@@ -197,6 +221,7 @@ export function initLinks({ confirmDialog } = {}) {
       document.querySelectorAll('.btn-links-estado').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       linksFilterEstado = btn.dataset.estado;
+      saveState(LINKS_FILTERS_KEY, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly, texto: linksFilterTexto });
       renderLinksView();
     });
   });
@@ -204,6 +229,7 @@ export function initLinks({ confirmDialog } = {}) {
   document.getElementById('btn-links-fav-only')?.addEventListener('click', (e) => {
     linksFilterFavOnly = !linksFilterFavOnly;
     e.currentTarget.classList.toggle('active', linksFilterFavOnly);
+    saveState(LINKS_FILTERS_KEY, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly, texto: linksFilterTexto });
     renderLinksView();
   });
 
@@ -212,6 +238,7 @@ export function initLinks({ confirmDialog } = {}) {
   searchInput?.addEventListener('input', (e) => {
     linksFilterTexto = e.target.value;
     searchClear?.classList.toggle('hidden', linksFilterTexto === '');
+    saveState(LINKS_FILTERS_KEY, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly, texto: linksFilterTexto });
     renderLinksView();
   });
   searchClear?.addEventListener('click', () => {
@@ -219,6 +246,7 @@ export function initLinks({ confirmDialog } = {}) {
     if (searchInput) searchInput.value = '';
     searchClear.classList.add('hidden');
     searchInput?.focus();
+    saveState(LINKS_FILTERS_KEY, { tipo: linksFilterTipo, estado: linksFilterEstado, favOnly: linksFilterFavOnly, texto: linksFilterTexto });
     renderLinksView();
   });
 
