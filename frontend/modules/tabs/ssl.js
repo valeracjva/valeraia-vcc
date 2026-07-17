@@ -2,6 +2,7 @@ import { API_BASE } from '../core/constants.js';
 import { get } from '../core/api.js';
 import { publishActivityNote } from '../core/activity-rail.js';
 import { buildAccordion, escHtml, formField, openEditModal, showManageBanner } from '../core/dom.js';
+import { loadState, saveState } from '../core/persist.js';
 
 // === M10 — SSL ===
 const SSL_STATUS_LABEL = { ok: 'OK', warn: 'WARN', crit: 'CRÍTICO', expired: 'VENCIDO', error: 'SIN RESOLVER', archived: 'ARCHIVADO' };
@@ -10,6 +11,7 @@ const SSL_STATUS_LABEL = { ok: 'OK', warn: 'WARN', crit: 'CRÍTICO', expired: 'V
 const SSL_STATUS_ORDER = { expired: 0, crit: 1, error: 2, warn: 3, ok: 4, archived: 5 };
 
 let sslView = 'expiry';
+const SSL_VIEW_KEY = 'vcc-ssl-view';
 let sslData  = null;
 
 const HIDDEN_SSL_KEY = 'vcc-hidden-ssl';
@@ -498,6 +500,14 @@ function toggleManageMode() {
 }
 
 export function initSSL() {
+  // Restaura la vista elegida la ultima vez -- antes siempre volvia a "Vencimiento" al recargar.
+  sslView = loadState(SSL_VIEW_KEY, 'expiry');
+  const savedSslViewBtn = document.querySelector(`.btn-ssl-view[data-view="${sslView}"]`);
+  if (savedSslViewBtn) {
+    document.querySelectorAll('.btn-ssl-view').forEach(b => b.classList.remove('active'));
+    savedSslViewBtn.classList.add('active');
+  }
+
   document.getElementById('btn-ssl-refresh').addEventListener('click', () => loadSSL(true));
   document.getElementById('btn-ssl-manage').addEventListener('click', toggleManageMode);
 
@@ -510,6 +520,7 @@ export function initSSL() {
     btn.addEventListener('click', () => {
       if (btn.dataset.view === sslView) return;
       sslView = btn.dataset.view;
+      saveState(SSL_VIEW_KEY, sslView);
       document.querySelectorAll('.btn-ssl-view').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       if (sslData) renderSSLMonitor(sslData);
