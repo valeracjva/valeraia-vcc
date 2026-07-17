@@ -14,6 +14,42 @@ const RISK_LABELS = {
 };
 const HIDDEN_SERVERS_KEY = 'vcc-hidden-servers';
 const HIDDEN_DISKS_KEY   = 'vcc-hidden-disks'; // { [serverId]: string[] de labels ocultos }
+const VISIBLE_FIELDS_KEY = 'vcc-infra-visible-fields';
+const DEFAULT_VISIBLE_FIELDS = { os: true, empresa: true, rol: true, ssh: true, metrics: true };
+const FIELD_LABELS = { os: 'OS', empresa: 'Empresa', rol: 'Rol', ssh: 'SSH / WinRM / Puerto', metrics: 'Métricas (CPU/RAM/Disco)' };
+
+function getVisibleFields() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VISIBLE_FIELDS_KEY) || '{}');
+    return { ...DEFAULT_VISIBLE_FIELDS, ...saved };
+  } catch {
+    return { ...DEFAULT_VISIBLE_FIELDS };
+  }
+}
+
+function setVisibleFields(fields) {
+  localStorage.setItem(VISIBLE_FIELDS_KEY, JSON.stringify(fields));
+}
+
+function renderFieldsPanel() {
+  const panel = document.getElementById('infra-fields-panel');
+  if (!panel) return;
+  const fields = getVisibleFields();
+  panel.innerHTML =
+    `<div class="infra-fields-panel-title">Campos visibles en las cards</div>` +
+    Object.entries(FIELD_LABELS).map(([key, label]) =>
+      `<label class="form-toggle-row"><input type="checkbox" class="infra-field-chk" data-field="${key}"${fields[key] ? ' checked' : ''}><span class="form-toggle-label">${label}</span></label>`
+    ).join('');
+
+  panel.querySelectorAll('.infra-field-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const updated = getVisibleFields();
+      updated[chk.dataset.field] = chk.checked;
+      setVisibleFields(updated);
+      renderInventory(infraAllServers);
+    });
+  });
+}
 let infraGroupBy         = 'empresa';
 let infraFilterMonitored = true;
 let infraAllServers      = [];
@@ -51,6 +87,7 @@ function buildServerCard(srv) {
   card.className = `infra-card risk-${srv.riesgo}`;
   card.dataset.server = srv.id;
 
+  const fields = getVisibleFields();
   const riskColor = RISK_COLORS[srv.riesgo] ?? '#888';
   const riskLabel = RISK_LABELS[srv.riesgo] ?? srv.riesgo.toUpperCase();
   const hasDetails = srv.apps.length > 0 || srv.dominios.length > 0 || !!srv.notas;
@@ -68,13 +105,13 @@ function buildServerCard(srv) {
       `<span class="infra-id" title="${escHtml(srv.id)}">${escHtml(srv.id)}</span>` +
       `<span class="infra-ip">${escHtml(srv.ip)}</span>` +
     `</div>` +
-    `<div class="infra-os">${escHtml(srv.os)}</div>` +
-    `<div class="infra-empresa">${escHtml(srv.empresa)}</div>` +
-    `<div class="infra-rol">${escHtml(srv.rol)}</div>` +
-    (srv.sshUser   ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${escHtml(String(srv.mysqlTunel))}` : ''}</div>` : '') +
-    (srv.winrmUser ? `<div class="infra-ssh">WinRM: ${escHtml(srv.winrmUser)}</div>` : '') +
-    (srv.puerto    ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
-    (srv.monitoreado ? `<div class="infra-metrics"><div class="metric-loading">actualizando…</div></div>` : '') +
+    (fields.os      ? `<div class="infra-os">${escHtml(srv.os)}</div>` : '') +
+    (fields.empresa ? `<div class="infra-empresa">${escHtml(srv.empresa)}</div>` : '') +
+    (fields.rol     ? `<div class="infra-rol">${escHtml(srv.rol)}</div>` : '') +
+    (fields.ssh && srv.sshUser   ? `<div class="infra-ssh">${escHtml(srv.sshUser)}${srv.mysqlTunel ? ` · MySQL :${escHtml(String(srv.mysqlTunel))}` : ''}</div>` : '') +
+    (fields.ssh && srv.winrmUser ? `<div class="infra-ssh">WinRM: ${escHtml(srv.winrmUser)}</div>` : '') +
+    (fields.ssh && srv.puerto    ? `<div class="infra-ssh">Puerto ${escHtml(srv.puerto)}</div>` : '') +
+    (fields.metrics && srv.monitoreado ? `<div class="infra-metrics"><div class="metric-loading">actualizando…</div></div>` : '') +
     // El toggle/details SIEMPRE se crea (aunque no haya apps/dominios/notas todavia) porque
     // "discos ocultos" se agrega de forma dinamica despues del primer fetch de metricas -- se
     // oculta con .infra-toggle-empty si al momento no hay nada que mostrar, y applyMetrics lo
@@ -591,6 +628,14 @@ export function initInventory({ confirmDialog } = {}) {
     renderInventory(infraAllServers);
   });
 
+  // Panel de campos visibles
+  document.getElementById('btn-infra-fields')?.addEventListener('click', () => {
+    const panel = document.getElementById('infra-fields-panel');
+    if (!panel) return;
+    if (panel.classList.contains('hidden')) renderFieldsPanel();
+    panel.classList.toggle('hidden');
+  });
+
   // Ocultar/restaurar discos individuales -- delegado a nivel documento (una sola vez) porque
   // metricsHtml se reemplaza entero via innerHTML en cada refresh de metricas (card y listado).
   document.addEventListener('click', (e) => {
@@ -812,16 +857,18 @@ function applyMetrics(m) {
   if (card) {
     const dot = card.querySelector(`.infra-conn-dot[data-conn="${escHtml(m.serverId)}"]`);
     if (dot) { dot.className = `infra-conn-dot ${cls}`; dot.title = tip; }
-    let metricsEl = card.querySelector('.infra-metrics');
-    if (!metricsEl) {
-      metricsEl = document.createElement('div');
-      metricsEl.className = 'infra-metrics';
-      const toggle = card.querySelector('.infra-toggle');
-      if (toggle) card.insertBefore(metricsEl, toggle);
-      else card.appendChild(metricsEl);
+    if (getVisibleFields().metrics) {
+      let metricsEl = card.querySelector('.infra-metrics');
+      if (!metricsEl) {
+        metricsEl = document.createElement('div');
+        metricsEl.className = 'infra-metrics';
+        const toggle = card.querySelector('.infra-toggle');
+        if (toggle) card.insertBefore(metricsEl, toggle);
+        else card.appendChild(metricsEl);
+      }
+      metricsEl.innerHTML = metricsHtml;
+      flashChangedBars(metricsEl, prev, base);
     }
-    metricsEl.innerHTML = metricsHtml;
-    flashChangedBars(metricsEl, prev, base);
   }
 
   // Vista listado
