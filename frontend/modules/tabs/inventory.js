@@ -183,6 +183,14 @@ function buildDetails(srv) {
   return html;
 }
 
+export function filterServers(servers, texto) {
+  const needle = (texto ?? '').trim().toLowerCase();
+  if (!needle) return servers;
+  return servers.filter(s =>
+    `${s.id} ${s.ip} ${s.empresa} ${s.rol} ${s.os}`.toLowerCase().includes(needle)
+  );
+}
+
 function groupServers(servers, by) {
   if (by === 'none') return [{ label: null, servers: servers.slice().sort((a, b) => a.id.localeCompare(b.id, 'es')) }];
   const order = [];
