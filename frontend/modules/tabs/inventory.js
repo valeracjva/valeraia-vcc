@@ -4,8 +4,8 @@ import { buildAccordion, escHtml, formField, formPasswordField, formSelect, open
 import { loadState, saveState } from '../core/persist.js';
 
 // === M4 — Inventario Infra ===
-// Mismos tokens que .infra-card.risk-* en style.css (border-left) — alto queda
-// en hex literal a propósito, mismo valor ya usado ahí y en cockpit/api-risk.
+// Mismos tokens que .infra-card.risk-* en style.css (border-left) — alto usa
+// el token --risk-alto (definido en :root), mismo valor que .infra-card.risk-alto.
 export const RISK_COLORS = {
   bajo:     'var(--success)',
   moderado: 'var(--warning)',
