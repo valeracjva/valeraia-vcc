@@ -2606,6 +2606,7 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
 .form-input:focus, .form-textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 0 0 1px var(--accent);
 }
 .form-input[readonly] { opacity: 0.6; cursor: not-allowed; }
 .form-textarea { resize: vertical; }
@@ -2691,7 +2692,7 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
   margin-bottom: 14px;
 }
 
-.modal-confirm-input:focus { outline: none; border-color: var(--accent); }
+.modal-confirm-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow), 0 0 0 1px var(--accent); }
 
 .modal-actions {
   display: flex;
@@ -3602,7 +3603,7 @@ html[data-theme="light"] .ops-node { background: rgba(245,242,237,0.88); }
   outline: none;
   transition: border-color 0.15s;
 }
-.json-editor-area:focus { border-color: var(--accent); }
+.json-editor-area:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow), 0 0 0 1px var(--accent); }
 
 .json-editor-actions {
   display: flex;
@@ -3739,6 +3740,7 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .links-search-input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 0 0 1px var(--accent);
 }
 .links-search-clear {
   position: absolute;
