@@ -3723,7 +3723,6 @@ html[data-theme="light"] .btn-infra-monitored.active {
 /* Unifica font-size y border-radius que divergían entre vistas  */
 .btn-ssl-refresh,
 .btn-ssl-manage,
-.btn-ssl-action,
 .btn-project-add,
 .btn-manage-close,
 .btn-modal-ok, .btn-modal-cancel,
@@ -3731,8 +3730,8 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .btn-infra-monitored {
   font-size: 0.72rem;
   font-family: var(--font-ui);
-  border-radius: 5px;
-  padding: 5px 10px;
+  border-radius: 7px;
+  padding: 5px 11px;
   white-space: nowrap;
 }
 
