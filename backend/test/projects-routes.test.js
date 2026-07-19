@@ -317,6 +317,36 @@ test('rechaza openScript con path traversal', async () => {
   });
 });
 
+test('POST open-vscode rechaza si el ambiente no tiene openScript', async () => {
+  const calls = [];
+  const spawnProcess = (...args) => { calls.push(args); return { unref() {} }; };
+  await withApi(async ({ request, store }) => {
+    const expectedHash = await store.getRegistryHash();
+    await request('POST', '/api/projects/beta/environments', {
+      expectedHash,
+      environment: { name: 'noscript', server: 'srv' },
+    });
+    const { response } = await request('POST', '/api/projects/beta/environments/noscript/open-vscode');
+    assert.equal(response.status, 400);
+    assert.equal(calls.length, 0);
+  }, { spawnProcess });
+});
+
+test('POST open-vscode devuelve 404 si el openScript no existe en disco (no cae a lógica propia)', async () => {
+  const calls = [];
+  const spawnProcess = (...args) => { calls.push(args); return { unref() {} }; };
+  await withApi(async ({ request, store }) => {
+    const expectedHash = await store.getRegistryHash();
+    await request('POST', '/api/projects/beta/environments', {
+      expectedHash,
+      environment: { name: 'ghost', server: 'srv', host: 'srv-ghost', remotePath: '/var/www/ghost', openScript: 'open-no-existe-jamas-de-los-jamases.ps1' },
+    });
+    const { response } = await request('POST', '/api/projects/beta/environments/ghost/open-vscode');
+    assert.equal(response.status, 404);
+    assert.equal(calls.length, 0, 'no debe spawnear nada propio aunque host/remotePath estén presentes');
+  }, { spawnProcess });
+});
+
 test('POST /api/projects/:id/open-ssh spawnea ssh con host/user válidos', async () => {
   const calls = [];
   const spawnProcess = (...args) => { calls.push(args); return { unref() {} }; };

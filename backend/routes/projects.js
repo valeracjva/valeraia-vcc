@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { Router } from 'express';
 
@@ -278,26 +279,42 @@ export function createProjectsRouter({
     }
   });
 
+  // Ejecuta el mismo openScript que usa el resto del workspace (scripts/launcher-infra/) en
+  // vez de reconstruir acá la lógica de "cómo abrir un proyecto" por su cuenta. Si mañana
+  // cambia esa lógica (ej. el fix de --folder-uri del 2026-07-19), se cambia una sola vez en
+  // el script y VCC lo hereda automático — no hay una segunda implementación que mantener
+  // sincronizada. Ver AI-Workspace/knowledge/cierres/20260719-Cierre-Correccion-Ambientes-Fincos-Web.md.
   router.post('/:id/environments/:env/open-vscode', async (req, res) => {
     try {
       const { registry } = await store.readRegistry();
       const project = findProject(registry, req.params.id);
       const environment = findEnvironment(project, req.params.env);
-      const { host, remotePath } = environment;
-      if (!host || !remotePath) {
-        throw new HttpError(400, 'host o remotePath no definido para este ambiente');
+      const { openScript } = environment;
+
+      if (!openScript) {
+        throw new HttpError(400, 'Este ambiente no tiene openScript definido — configurarlo en Inventario antes de poder abrirlo');
       }
-      if (!/^[A-Za-z0-9._-]+$/.test(host)) {
-        throw new HttpError(400, 'host contiene caracteres inválidos');
-      }
-      if (/[;&|`$<>\\]/.test(remotePath)) {
-        throw new HttpError(400, 'remotePath contiene caracteres inválidos');
+      if (
+        !SAFE_OPEN_SCRIPT_PATTERN.test(openScript)
+        || openScript.includes('..')
+        || path.basename(openScript) !== openScript
+      ) {
+        throw new HttpError(400, 'openScript debe ser sólo un nombre de archivo seguro');
       }
 
+      const scriptPath = path.join(PATHS.launcherScripts, openScript);
+      if (!existsSync(scriptPath)) {
+        throw new HttpError(404, `openScript no existe: ${openScript} (regenerar con generate-open-scripts.ps1)`);
+      }
+
+      // Sin shell:true: con args-array + shell:true, Node concatena sin escapar (deprecation
+      // warning propia de Node) y en Windows puede mangler paths con espacios (ej.
+      // "Carlos Valera") vía cmd.exe, además de mostrar una consola visible que flashea y se
+      // cierra. pwsh.exe es un ejecutable real, no necesita resolución de shell.
       const child = spawnProcess(
-        'code',
-        ['--remote', `ssh-remote+${host}`, remotePath],
-        { shell: true, detached: true, stdio: 'ignore' },
+        'pwsh',
+        ['-NoProfile', '-File', scriptPath],
+        { detached: true, stdio: 'ignore', windowsHide: true },
       );
       child.unref();
       res.json({ ok: true });
