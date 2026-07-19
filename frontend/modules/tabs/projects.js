@@ -41,6 +41,8 @@ export function syncProjectsContext({ activeProjectId: nextActiveProjectId, runt
 }
 
 export async function loadProjects() {
+  const container = document.getElementById('projects-container');
+  container.innerHTML = '<div class="infra-loading">Cargando proyectos...</div>';
   try {
     const res = await fetch(`${API_BASE}/api/registry`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -146,6 +148,11 @@ function renderProjectsList(projects) {
 function renderProjects(projects) {
   const container = document.getElementById('projects-container');
   container.innerHTML = '';
+
+  if (!projects.length) {
+    container.innerHTML = '<div class="infra-loading">No hay proyectos registrados todavía.</div>';
+    return;
+  }
 
   if (projectsGroupBy === 'list') {
     container.appendChild(renderProjectsList(projects));

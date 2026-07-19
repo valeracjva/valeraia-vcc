@@ -126,6 +126,11 @@ export function initGovern() {
   if (!grid) return;
   grid.innerHTML = '';
 
+  if (!GOVERN_SCRIPTS.length) {
+    grid.innerHTML = '<div class="infra-loading">No hay scripts de gobernanza configurados.</div>';
+    return;
+  }
+
   for (const s of GOVERN_SCRIPTS) {
     const card = document.createElement('div');
     card.className = 'govern-card';
