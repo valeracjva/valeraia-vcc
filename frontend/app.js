@@ -4,7 +4,6 @@ import { initActivityRail, handleActivityEvent } from './modules/core/activity-r
 import { buildAccordion, escHtml, formField, formSelect, showManageBanner } from './modules/core/dom.js';
 import { initSidebar, initTabs, initTheme, tickFooterClock, confirmDialog, openJsonModal, initJsonModal } from './modules/core/shell.js';
 import { initBriefing, renderBriefing, loadCatchupBanner } from './modules/tabs/briefing.js';
-import { renderCockpit } from './modules/tabs/cockpit.js';
 import { initGovern, connectGovernWS, registerGovernStreamSink } from './modules/tabs/govern.js';
 import { initApis, loadApis } from './modules/tabs/apis.js';
 import { initAgents, loadAgents } from './modules/tabs/agents.js';
@@ -127,7 +126,6 @@ async function update() {
     renderHost(status.host?.value);
     renderPendientes(status.pendientes.handover);
     updateTunnelDots(tunnels);
-    renderCockpit(status, handover.sections, tunnels, runtime, { onActivateProject: setActiveProject });
     renderBriefing(handover.sections, {
       id: nextActiveProjectId,
       environment: runtime?.current?.environment ?? project.env,
