@@ -1,7 +1,7 @@
 import { API_BASE } from '../core/constants.js';
 import { get } from '../core/api.js';
 import { publishActivityNote } from '../core/activity-rail.js';
-import { escHtml, openEditModal, showManageBanner } from '../core/dom.js';
+import { escHtml, openEditModal, showManageBanner, formField } from '../core/dom.js';
 
 let confirmDialogRef = null;
 let openJsonModalRef = null;
@@ -328,10 +328,10 @@ function showTunnelModal(tunnel) {
         `<div class="manage-form-title">${isEdit ? `Editar: ${escHtml(tunnel.name)}` : 'Nuevo túnel'}</div>` +
         `<div class="manage-form-grid">` +
           `<div class="form-field"><label class="form-label" for="tun-f-port">Puerto</label><input class="form-input" type="number" id="tun-f-port" value="${isEdit ? tunnel.port : ''}" placeholder="3311"></div>` +
-          `<div class="form-field"><label class="form-label" for="tun-f-name">Nombre</label><input class="form-input" id="tun-f-name" value="${escHtml(tunnel?.name ?? '')}" placeholder="Nombre"></div>` +
-          `<div class="form-field"><label class="form-label" for="tun-f-remote">Remote</label><input class="form-input" id="tun-f-remote" value="${escHtml(tunnel?.remote ?? '')}" placeholder="user@host"></div>` +
+          formField('Nombre', 'tun-f-name', tunnel?.name ?? '', 'Nombre') +
+          formField('Remote', 'tun-f-remote', tunnel?.remote ?? '', 'user@host') +
           `<div class="form-field"><label class="form-label" for="tun-f-key">Clave SSH</label><input class="form-input" list="ssh-keys-list" id="tun-f-key" value="${escHtml(tunnel?.key ?? '')}" placeholder=".ssh/key"></div>` +
-          `<div class="form-field"><label class="form-label" for="tun-f-forward">Forward</label><input class="form-input" id="tun-f-forward" value="${escHtml(tunnel?.forward ?? '')}" placeholder="host:3306"></div>` +
+          formField('Forward', 'tun-f-forward', tunnel?.forward ?? '', 'host:3306') +
         `</div>` +
         `<label class="form-toggle-row">` +
           `<input type="checkbox" id="tun-f-prod"${tunnel?.prod ? ' checked' : ''}>` +
@@ -421,10 +421,10 @@ function showAdhocModal() {
         `<div class="manage-form-title">Túnel ad-hoc</div>` +
         `<div class="manage-form-grid">` +
           `<div class="form-field"><label class="form-label" for="adhoc-port">Puerto local</label><input type="number" id="adhoc-port" class="form-input" placeholder="3311" min="1024" max="65535"></div>` +
-          `<div class="form-field"><label class="form-label" for="adhoc-name">Nombre (opcional)</label><input type="text" id="adhoc-name" class="form-input" placeholder="Mi túnel"></div>` +
-          `<div class="form-field"><label class="form-label" for="adhoc-remote">Remote (user@host)</label><input type="text" id="adhoc-remote" class="form-input" placeholder="ubuntu@10.145.2.26"></div>` +
+          formField('Nombre (opcional)', 'adhoc-name', '', 'Mi túnel') +
+          formField('Remote (user@host)', 'adhoc-remote', '', 'ubuntu@10.145.2.26') +
           `<div class="form-field"><label class="form-label" for="adhoc-key">Clave SSH</label><input type="text" id="adhoc-key" list="ssh-keys-list" class="form-input" placeholder=".ssh/srv-appstest.key"></div>` +
-          `<div class="form-field"><label class="form-label" for="adhoc-forward">Forward (host:port)</label><input type="text" id="adhoc-forward" class="form-input" placeholder="127.0.0.1:3306"></div>` +
+          formField('Forward (host:port)', 'adhoc-forward', '', '127.0.0.1:3306') +
         `</div>` +
         `<div class="manage-form-actions">` +
           `<span class="adhoc-status" id="adhoc-status"></span>` +
