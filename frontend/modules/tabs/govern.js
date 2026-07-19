@@ -17,7 +17,7 @@ export function registerGovernStreamSink(sink) {
   return () => governStreamSinks.delete(sink);
 }
 
-const GOVERN_SCRIPTS = [
+export const GOVERN_SCRIPTS = [
   {
     id: 'workspace-health',
     icon: '⬡',
@@ -60,14 +60,14 @@ const GOVERN_SCRIPTS = [
   },
   {
     id: 'knowledge-organizer',
-    icon: '📚',
+    icon: '▦',
     name: 'knowledge-organizer',
     desc: 'Organiza documentos sueltos en knowledge/ raíz hacia sus subcarpetas correctas (cierres, sop, informes, planning) según el tipo detectado en el nombre de archivo. Corre automático a diario, disponible también manual.',
     scripts: ['scripts/workspace/governance/knowledge-organizer.ps1'],
   },
   {
     id: 'daily-maintenance',
-    icon: '🧹',
+    icon: '↻',
     name: 'daily-maintenance',
     desc: 'Mantenimiento diario del workspace: encadena refresh-indexes, compile-agents y workspace-health (modo rápido) en un solo paso. Corre automático vía Task Scheduler a las 08:00.',
     scripts: [
