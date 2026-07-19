@@ -24,7 +24,7 @@ function renderApis(data) {
     <div class="apis-hero">
       <div>
         <div class="apis-kicker">API SURFACE</div>
-        <h2>Backend VCC local</h2>
+        <h2 class="apis-hero-title">Backend VCC local</h2>
         <p>Inventario operativo de rutas internas, propósito, riesgo y criterio de verificación. Las rutas de escritura o ejecución no se prueban automáticamente.</p>
       </div>
       <div class="apis-summary">
@@ -45,7 +45,7 @@ function renderApis(data) {
     section.innerHTML = `
       <div class="apis-group-header">
         <div>
-          <h3>${escHtml(moduleName)}</h3>
+          <h3 class="apis-group-title">${escHtml(moduleName)}</h3>
           <span>${apis.length} endpoint${apis.length !== 1 ? 's' : ''} · ${safeCount} safe check</span>
         </div>
       </div>

@@ -3107,7 +3107,7 @@ html[data-theme="light"] .ops-node { background: rgba(245,242,237,0.88); }
   letter-spacing: 0.16em;
   color: var(--accent-2);
 }
-.apis-hero h2 {
+.apis-hero-title {
   margin-top: 6px;
   font-size: 1.35rem;
   color: var(--text);
@@ -3157,8 +3157,10 @@ html[data-theme="light"] .ops-node { background: rgba(245,242,237,0.88); }
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
 }
-.apis-group-header h3 {
-  font-size: 0.88rem;
+.apis-group-header .apis-group-title {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.8rem;
   color: var(--text);
 }
 .apis-group-header span {
