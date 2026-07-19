@@ -83,7 +83,7 @@ function renderCategoryCard(cat) {
     <header class="vault-card-header" data-vault-toggle="${escHtml(cat.category)}">
       <div class="vault-card-title-row">
         <div class="vault-card-title-wrap">
-          <div class="vault-card-title">🔑 ${escHtml(cat.category)}</div>
+          <div class="vault-card-title">⚿ ${escHtml(cat.category)}</div>
           <div class="vault-card-subtitle">${escHtml(cat.file)}</div>
         </div>
         <span class="vault-card-badge">${count} claves</span>
@@ -136,8 +136,8 @@ function renderEntry(category, entry) {
           <input class="form-input vault-edit-input" data-vault-edit-input="${escHtml(editId)}" type="text" value="${escHtml(entry.value)}" autocomplete="off">
         </div>
         <div class="vault-entry-actions">
-          <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye-edit" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">👁</button>
-          <button class="btn btn-sm btn-primary vault-icon-btn" data-vault-action="save" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Guardar">💾</button>
+          <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye-edit" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">◐</button>
+          <button class="btn btn-sm btn-primary vault-icon-btn" data-vault-action="save" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Guardar">✓</button>
           <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="cancel" data-edit-id="${escHtml(editId)}" title="Cancelar">✕</button>
         </div>
       </div>`;
@@ -150,9 +150,9 @@ function renderEntry(category, entry) {
         <div class="vault-entry-value${isRevealed ? '' : ' masked'}" data-vault-value="${escHtml(editId)}">${isRevealed ? escHtml(entry.value) : '••••••••••••'}</div>
       </div>
       <div class="vault-entry-actions">
-        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">${isRevealed ? '🙈' : '👁'}</button>
-        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="edit" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Editar">✏</button>
-        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="delete" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Eliminar">🗑</button>
+        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">${isRevealed ? '◑' : '◐'}</button>
+        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="edit" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Editar">✎</button>
+        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="delete" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Eliminar">⊗</button>
       </div>
     </div>`;
 }

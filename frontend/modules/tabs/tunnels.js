@@ -90,7 +90,7 @@ function renderTunnels(tunnels) {
 
       const dbLabel = document.createElement('div');
       dbLabel.className = 'tunnel-db-section-label';
-      dbLabel.textContent = '🗄 Bases de datos';
+      dbLabel.textContent = 'Bases de datos';
 
       const dbContent = document.createElement('div');
       dbContent.className = 'tunnel-db-content';
