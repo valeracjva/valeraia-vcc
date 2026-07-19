@@ -1363,39 +1363,6 @@ button { font-family: var(--font-ui); }
   white-space: nowrap;
 }
 
-/* Project management / editors */
-.project-editor-title { margin-bottom: 12px; color: var(--accent-2); font-weight: 600; font-size: 0.8rem; }
-
-.project-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.project-form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.7rem;
-  color: var(--text-muted);
-}
-
-.project-form-field-wide { grid-column: 1 / -1; }
-
-.project-input {
-  font-family: var(--font-ui);
-  font-size: 0.78rem;
-  background: var(--bg);
-  border: 1px solid var(--border-2);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 5px 8px;
-  transition: border-color 0.12s;
-}
-
-.project-input:focus { outline: none; border-color: var(--accent); }
-.project-input.readonly { color: var(--text-faint); cursor: default; }
 
 .project-access-readonly {
   padding: 10px;
@@ -1866,29 +1833,6 @@ button { font-family: var(--font-ui); }
 .ssl-table-sub  { background: var(--bg); }
 .ssl-table-sub td { padding: 6px 14px; }
 
-/* SSL — ABM dominios */
-.ssl-add-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.ssl-input {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  background: var(--bg);
-  border: 1px solid var(--border-2);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 5px 8px;
-  flex: 1;
-  min-width: 0;
-  transition: border-color 0.12s;
-}
-
-.ssl-input:focus { outline: none; border-color: var(--accent); }
 
 .btn-ssl-action {
   font-size: 0.7rem;
