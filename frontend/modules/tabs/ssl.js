@@ -430,7 +430,7 @@ function showDomainModal(entry) {
       if (ok) close();
       else showManageBanner('ssl-f-error', 'Error al guardar — revisá la consola', true);
     });
-  }, { size: 'compact' });
+  }, { size: 'compact', title: entry ? `Editar: ${entry.domain}` : 'Nuevo dominio' });
 }
 
 function showArchiveModal(entry) {
@@ -453,7 +453,7 @@ function showArchiveModal(entry) {
       const ok = await saveConfig(updated);
       if (ok) close();
     });
-  }, { size: 'compact' });
+  }, { size: 'compact', title: `Archivar: ${entry.domain}` });
 }
 
 async function saveConfig(domains) {

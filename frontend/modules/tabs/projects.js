@@ -1,5 +1,5 @@
 import { API_BASE } from '../core/constants.js';
-import { buildAccordion, escHtml, openEditModal } from '../core/dom.js';
+import { buildAccordion, escHtml, formField, formSelect, openEditModal } from '../core/dom.js';
 import { loadState, saveState } from '../core/persist.js';
 
 // === M2 — Proyectos ===
@@ -31,7 +31,6 @@ let projectsGroupBy = 'client';
 const PROJECTS_GROUPBY_KEY = 'vcc-projects-groupby';
 let registryData = null;
 let registryHash = null;
-let projectManageMode = false;
 let projectsBannerTimer = null;
 let refreshApp = null;
 let confirmDialogRef = null;
@@ -49,7 +48,6 @@ export async function loadProjects() {
     registryHash = res.headers.get('X-Registry-Hash') || res.headers.get('ETag')?.replaceAll('"', '') || null;
     document.getElementById('projects-hash').textContent = registryHash ? registryHash.slice(0, 12) : 'sin hash';
     renderProjects(registryData.projects);
-    if (projectManageMode) renderProjectManagement();
   } catch (e) {
     console.error('[VCC] loadProjects error:', e.message);
     showProjectsBanner('No se pudo cargar el registry.', true);
@@ -106,7 +104,7 @@ function renderProjectsList(projects) {
   table.className = 'data-table projects-list-table';
   table.innerHTML =
     `<thead><tr>` +
-    `<th>PROYECTO</th><th>CLIENTE</th><th>TIPO</th><th>ESTADO</th><th>AMBIENTES</th>` +
+    `<th>PROYECTO</th><th>CLIENTE</th><th>TIPO</th><th>ESTADO</th><th>AMBIENTES</th><th>ACCIONES</th>` +
     `</tr></thead>`;
 
   const tbody = document.createElement('tbody');
@@ -132,13 +130,11 @@ function renderProjectsList(projects) {
       `<td style="color:${sc}">${escHtml(STATUS_LABEL[p.status] || p.status || '—')}</td>` +
       `<td>${envsHtml || '<span style="color:var(--text-faint)">—</span>'}</td>`;
 
-    tr.addEventListener('click', () => {
-      // Cambiar a vista por nombre y expandir la card del proyecto
-      const btn = document.querySelector('.btn-projects-group[data-group="client"]');
-      if (btn && projectsGroupBy !== 'client') {
-        btn.click();
-      }
-    });
+    const actionsTd = document.createElement('td');
+    actionsTd.appendChild(buildProjectActionButtons(p));
+    tr.appendChild(actionsTd);
+
+    tr.addEventListener('click', () => showProjectEditModal(p));
 
     tbody.appendChild(tr);
   }
@@ -220,6 +216,156 @@ const STATUS_COLORS = {
   archived: 'var(--text-faint)',
 };
 
+// Mismas clases que el resto de VCC (btn-manage-edit / btn-manage-del) para Gestionar/Eliminar.
+// Archivar no tiene precedente en otro tab — reusa el mismo look ghost que btn-manage-edit.
+function buildProjectActionButtons(project) {
+  const wrap = document.createElement('div');
+  wrap.className = 'project-actions-row';
+  wrap.style.position = 'relative';
+
+  // Dropdown trigger (kebab menu)
+  const trigger = document.createElement('button');
+  trigger.className = 'project-menu-trigger';
+  trigger.textContent = '⋮';
+  trigger.title = 'Acciones del proyecto';
+  trigger.setAttribute('aria-label', 'Menú de acciones del proyecto');
+  trigger.setAttribute('aria-haspopup', 'true');
+  trigger.setAttribute('aria-expanded', 'false');
+
+  // Dropdown menu
+  const menu = document.createElement('div');
+  menu.className = 'project-menu hidden';
+  menu.setAttribute('role', 'menu');
+
+  const isArchived = project.status === 'archived';
+  const isActive = project.status === 'active';
+
+  // Gestionar (editar)
+    const manage = document.createElement('button');
+    manage.className = 'project-menu-item';
+    manage.setAttribute('role', 'menuitem');
+    manage.textContent = 'Gestionar';
+    manage.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMenu();
+      showProjectEditModal(project);
+    });
+    menu.appendChild(manage);
+
+    // Activar/Desactivar
+  if (!isArchived) {
+    const toggleActive = document.createElement('button');
+    toggleActive.className = 'project-menu-item';
+    toggleActive.setAttribute('role', 'menuitem');
+    toggleActive.textContent = isActive ? 'Desactivar' : 'Activar';
+    toggleActive.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const nextStatus = isActive ? 'paused' : 'active';
+      const confirmed = await confirmDialogRef(
+        isActive ? 'Desactivar proyecto' : 'Activar proyecto',
+        isActive
+          ? `${project.id} pasa a estado "paused" — sin trabajo en curso, no borra nada.`
+          : `${project.id} vuelve a estado "active".`,
+        false,
+      );
+      if (!confirmed) { closeMenu(); return; }
+      closeMenu();
+      await projectWrite(
+        'PATCH',
+        `/api/projects/${encodeURIComponent(project.id)}`,
+        { changes: { status: nextStatus } },
+        `Proyecto ${project.id} ${isActive ? 'desactivado' : 'activado'}.`,
+      );
+    });
+    menu.appendChild(toggleActive);
+  }
+
+  // Archivar/Desarchivar
+  const archive = document.createElement('button');
+  archive.className = 'project-menu-item';
+  archive.setAttribute('role', 'menuitem');
+  archive.textContent = isArchived ? 'Desarchivar' : 'Archivar';
+  archive.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const nextStatus = isArchived ? 'active' : 'archived';
+    const confirmed = await confirmDialogRef(
+      isArchived ? 'Desarchivar proyecto' : 'Archivar proyecto',
+      isArchived
+        ? `${project.id} vuelve a estado "active".`
+        : `${project.id} pasa a estado "archived" — no borra nada, es reversible.`,
+      false,
+    );
+    if (!confirmed) { closeMenu(); return; }
+    closeMenu();
+    await projectWrite(
+      'PATCH',
+      `/api/projects/${encodeURIComponent(project.id)}`,
+      { changes: { status: nextStatus } },
+      `Proyecto ${project.id} ${isArchived ? 'desarchivado' : 'archivado'}.`,
+    );
+  });
+  menu.appendChild(archive);
+
+  // Eliminar
+  const del = document.createElement('button');
+  del.className = 'project-menu-item project-menu-item--danger';
+  del.setAttribute('role', 'menuitem');
+  del.textContent = 'Eliminar';
+  del.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const confirmed = await confirmDialogRef(
+      'Eliminar proyecto',
+      `Escribí ${project.id} para confirmar la eliminación.`,
+      true,
+      project.id,
+    );
+    if (!confirmed) { closeMenu(); return; }
+    closeMenu();
+    await projectWrite('DELETE', `/api/projects/${encodeURIComponent(project.id)}`, {}, `Proyecto ${project.id} eliminado.`);
+  });
+  menu.appendChild(del);
+
+  wrap.appendChild(trigger);
+  wrap.appendChild(menu);
+
+  // Toggle dropdown
+  function toggleMenu(e) {
+    e.stopPropagation();
+    const isOpen = !menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', isOpen);
+    trigger.setAttribute('aria-expanded', String(!isOpen));
+    trigger.classList.toggle('open', !isOpen);
+  }
+
+  function closeMenu() {
+    menu.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.classList.remove('open');
+  }
+
+  trigger.addEventListener('click', toggleMenu);
+
+  // Cerrar al click fuera
+  document.addEventListener('click', closeMenu);
+
+  // Cerrar con Escape
+  function onKeydown(e) {
+    if (e.key === 'Escape') {
+      closeMenu();
+      trigger.focus();
+    }
+  }
+  document.addEventListener('keydown', onKeydown);
+
+  // Cleanup si se destruye la card (opcional, para memoria)
+  wrap._cleanup = () => {
+    document.removeEventListener('click', closeMenu);
+    document.removeEventListener('keydown', onKeydown);
+  };
+
+  return wrap;
+}
+
 function renderProjectCard(project) {
   const card = document.createElement('div');
   card.className = 'project-card';
@@ -235,6 +381,7 @@ function renderProjectCard(project) {
     `<span class="infra-dot" style="background:${statusColor}"></span>` +
     `<span class="project-card-name">${escHtml(project.name || project.id)}</span>` +
     `<span class="project-type-badge">${escHtml(project.type || '')}</span>`;
+  header.appendChild(buildProjectActionButtons(project));
   card.appendChild(header);
 
   const clientEl = document.createElement('div');
@@ -446,44 +593,6 @@ export async function setActiveProject(projectId, envName, btn) {
   }
 }
 
-function managementField(label, field, value = '', { readOnly = false, required = false, textarea = false } = {}) {
-  const wrapper = document.createElement('label');
-  wrapper.className = `project-form-field${textarea ? ' project-form-field-wide' : ''}`;
-  wrapper.textContent = label;
-  const input = document.createElement(textarea ? 'textarea' : 'input');
-  input.className = 'project-input';
-  input.dataset.field = field;
-  input.value = value ?? '';
-  input.readOnly = readOnly;
-  input.required = required;
-  if (readOnly) input.classList.add('readonly');
-  wrapper.appendChild(input);
-  return wrapper;
-}
-
-function projectMetadataGrid(project, isNew = false) {
-  const grid = document.createElement('div');
-  grid.className = 'project-form-grid';
-  const idField = managementField('ID', 'id', project.id, { readOnly: true });
-  const nameField = managementField('Nombre', 'name', project.name, { required: true });
-  grid.appendChild(idField);
-  grid.appendChild(nameField);
-  grid.appendChild(managementField('Tipo', 'type', project.type, { required: true }));
-  grid.appendChild(managementField('Categoría', 'category', project.category, { required: true }));
-  grid.appendChild(managementField('Estado', 'status', project.status, { required: true }));
-  grid.appendChild(managementField('Cliente', 'client', project.client, { required: true }));
-  grid.appendChild(managementField('Notas', 'notes', project.notes, { textarea: true }));
-  if (isNew) {
-    const idInput = idField.querySelector('input');
-    const nameInput = nameField.querySelector('input');
-    idInput.placeholder = 'automático desde nombre';
-    nameInput.addEventListener('input', () => {
-      idInput.value = previewProjectId(nameInput.value);
-    });
-  }
-  return grid;
-}
-
 function previewProjectId(name) {
   return name
     .normalize('NFD')
@@ -493,59 +602,155 @@ function previewProjectId(name) {
     .replace(/^-+|-+$/g, '');
 }
 
-function readFields(container, fields) {
-  return Object.fromEntries(fields.map(field => [
-    field,
-    container.querySelector(`[data-field="${field}"]`)?.value.trim() ?? '',
-  ]));
+// Mismo patrón que showInventoryForm (inventory.js): manage-form / formField / manage-form-actions
+// con solo Cancelar+Guardar. Archivar/Eliminar viven afuera del modal (tarjeta o fila de
+// Listado), igual que btn-manage-del en el resto de VCC — nunca adentro del form de edición.
+function showProjectForm(project, container, onClose) {
+  const isEdit = project !== null;
+  const fc = container;
+
+  fc.innerHTML =
+    `<div class="manage-form">` +
+      `<div class="manage-form-title">${isEdit ? `Editar: ${escHtml(project.id)}` : 'Nuevo proyecto'}</div>` +
+      `<div class="manage-form-grid">` +
+        formField('ID', 'proj-f-id', isEdit ? project.id : '', 'automático desde el nombre', true) +
+        formField('Nombre', 'proj-f-name', project?.name || '', 'ej: Fincos Web') +
+        formField('Tipo', 'proj-f-type', project?.type || '', 'ej: laravel') +
+        formField('Categoría', 'proj-f-category', project?.category || '', 'ej: desarrollo') +
+        formField('Estado', 'proj-f-status', project?.status || 'active', 'active / paused / archived / ...') +
+        formField('Cliente', 'proj-f-client', project?.client || '', 'ej: digna-fincos') +
+      `</div>` +
+      `<label class="form-label" for="proj-f-notes">Notas</label>` +
+      `<textarea class="form-textarea" id="proj-f-notes" rows="3" placeholder="Notas operativas">${escHtml(project?.notes || '')}</textarea>` +
+      `<div class="manage-banner hidden" id="proj-form-error" style="margin-top:8px"></div>` +
+      `<div class="manage-form-actions">` +
+        `<button class="btn btn-ghost btn-modal-cancel" id="btn-proj-form-cancel">Cancelar</button>` +
+        `<button class="btn btn-primary btn-modal-ok" id="btn-proj-form-save">${isEdit ? 'Guardar cambios' : 'Crear proyecto'}</button>` +
+      `</div>` +
+    `</div>`;
+
+  if (!isEdit) {
+    const idInput = document.getElementById('proj-f-id');
+    const nameInput = document.getElementById('proj-f-name');
+    nameInput.addEventListener('input', () => { idInput.value = previewProjectId(nameInput.value); });
+  } else {
+    fc.querySelector('#proj-form-error').before(buildEnvironmentsSection(project, onClose));
+  }
+
+  fc.querySelector('#btn-proj-form-cancel').addEventListener('click', onClose);
+
+  const showFormErr = (msg) => {
+    const el = document.getElementById('proj-form-error');
+    el.textContent = msg;
+    el.className = 'manage-banner manage-banner-error';
+  };
+
+  fc.querySelector('#btn-proj-form-save').addEventListener('click', async () => {
+    const values = {
+      name:     document.getElementById('proj-f-name').value.trim(),
+      type:     document.getElementById('proj-f-type').value.trim(),
+      category: document.getElementById('proj-f-category').value.trim(),
+      status:   document.getElementById('proj-f-status').value.trim(),
+      client:   document.getElementById('proj-f-client').value.trim(),
+      notes:    document.getElementById('proj-f-notes').value.trim(),
+    };
+    if (!values.name || !values.type || !values.category || !values.status || !values.client) {
+      showFormErr('Completá todos los campos obligatorios (Nombre, Tipo, Categoría, Estado, Cliente).');
+      return;
+    }
+
+    if (!isEdit) {
+      const payload = { ...values };
+      if (!payload.notes) delete payload.notes;
+      const result = await projectWrite('POST', '/api/projects', { project: { ...payload, environments: [] } }, `Proyecto ${values.name} creado.`);
+      if (result) onClose();
+      return;
+    }
+
+    const changes = {};
+    for (const field of PROJECT_FIELDS) {
+      if (values[field] !== String(project[field] ?? '')) changes[field] = values[field];
+    }
+    const result = await projectWrite(
+      'PATCH',
+      `/api/projects/${encodeURIComponent(project.id)}`,
+      { changes },
+      `Proyecto ${project.id} actualizado.`,
+    );
+    if (result) onClose();
+  });
 }
 
-function requiredFieldsPresent(values, fields) {
-  const missing = fields.find(field => !values[field]);
-  if (missing) showProjectsBanner(`Campo obligatorio: ${missing}`, true);
-  return !missing;
+function buildEnvironmentsSection(project, closeParent) {
+  const section = document.createElement('div');
+
+  if (project.access && project.environments === undefined) {
+    // Proyectos de infra sin "environments" (ej. fortigate-nre) — solo accesos de referencia.
+    const title = document.createElement('label');
+    title.className = 'form-label';
+    title.textContent = 'Accesos';
+    section.appendChild(title);
+    for (const acc of project.access) {
+      const row = document.createElement('div');
+      row.className = 'env-block-field';
+      if (acc.method === 'web') {
+        row.innerHTML =
+          `<span class="env-field-label">web</span>` +
+          `<a class="env-field-value mono" href="${escHtml(acc.url)}" target="_blank" rel="noopener">${escHtml(acc.label || acc.url)}</a>`;
+      } else if (acc.method === 'ssh') {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-ghost';
+        btn.textContent = `⬡ Conectar SSH (${acc.user}@${acc.host})`;
+        btn.addEventListener('click', () => openSsh(project.id, acc.host, acc.user, btn));
+        row.innerHTML = `<span class="env-field-label">ssh</span>`;
+        row.appendChild(btn);
+      } else {
+        row.innerHTML =
+          `<span class="env-field-label">${escHtml(acc.method)}</span>` +
+          `<span class="env-field-value mono">${escHtml(acc.host || acc.url || '')}</span>`;
+      }
+      section.appendChild(row);
+    }
+    return section;
+  }
+
+  const header = document.createElement('div');
+  header.className = 'project-environments-header';
+  const title = document.createElement('label');
+  title.className = 'form-label';
+  title.textContent = 'Ambientes';
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-sm';
+  addBtn.textContent = '＋ Ambiente';
+  addBtn.addEventListener('click', () => { closeParent(); showEnvironmentModal(project); });
+  header.append(title, addBtn);
+  section.appendChild(header);
+
+  const list = document.createElement('div');
+  list.className = 'environment-editor-list';
+  for (const environment of (project.environments || [])) {
+    const row = document.createElement('div');
+    row.className = 'environment-summary-row';
+    row.innerHTML =
+      `<span class="environment-name">${escHtml(environment.name)}</span>` +
+      `<span class="environment-server">${escHtml(environment.server)}</span>`;
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-sm';
+    editBtn.textContent = 'Editar';
+    editBtn.addEventListener('click', () => { closeParent(); showEnvironmentModal(project, environment); });
+    row.appendChild(editBtn);
+    list.appendChild(row);
+  }
+  section.appendChild(list);
+  return section;
+}
+
+function showProjectEditModal(project) {
+  openEditModal((box, close) => showProjectForm(project, box, close), { size: 'standard', title: `Editar: ${project.id}` });
 }
 
 function showNewProjectModal() {
-  openEditModal((box, close) => {
-    box.innerHTML = '<div class="project-editor project-editor-new"><div class="project-editor-title">NUEVO PROYECTO</div></div>';
-    const editor = box.querySelector('.project-editor-new');
-    editor.appendChild(projectMetadataGrid({ environments: [] }, true));
-
-    const actions = document.createElement('div');
-    actions.className = 'project-editor-actions';
-    const cancel = document.createElement('button');
-    cancel.className = 'btn btn-ghost btn-project-secondary';
-    cancel.textContent = 'Cancelar';
-    cancel.addEventListener('click', close);
-    const save = document.createElement('button');
-    save.className = 'btn btn-primary btn-project-primary';
-    save.textContent = 'Crear proyecto';
-    save.addEventListener('click', async () => {
-      const values = readFields(editor, PROJECT_FIELDS);
-      if (!requiredFieldsPresent(values, ['name', 'type', 'category', 'status', 'client'])) return;
-      const project = { ...values, environments: [] };
-      if (!project.notes) delete project.notes;
-      const result = await projectWrite('POST', '/api/projects', { project }, `Proyecto ${project.id} creado.`);
-      if (result) close();
-    });
-    actions.append(cancel, save);
-    editor.appendChild(actions);
-  }, { size: 'standard' });
-}
-
-function environmentSummaryRow(project, environment) {
-  const row = document.createElement('div');
-  row.className = 'environment-summary-row';
-  row.innerHTML =
-    `<span class="environment-name">${escHtml(environment.name)}</span>` +
-    `<span class="environment-server">${escHtml(environment.server)}</span>`;
-  const editBtn = document.createElement('button');
-  editBtn.className = 'btn btn-ghost btn-project-secondary';
-  editBtn.textContent = '✎ Editar';
-  editBtn.addEventListener('click', () => showEnvironmentModal(project, environment));
-  row.appendChild(editBtn);
-  return row;
+  openEditModal((box, close) => showProjectForm(null, box, close), { size: 'standard', title: 'Nuevo proyecto' });
 }
 
 function showEnvironmentModal(project, environment = null) {
@@ -553,28 +758,38 @@ function showEnvironmentModal(project, environment = null) {
     const isNew = !environment;
     const original = environment || {};
 
-    box.innerHTML = `<div class="project-editor-title">${isNew ? 'NUEVO AMBIENTE' : `${escHtml(project.id)} / ${escHtml(environment.name)}`}</div>`;
+    box.innerHTML =
+      `<div class="manage-form">` +
+        `<div class="manage-form-title">${isNew ? 'Nuevo ambiente' : `Editar: ${escHtml(project.id)} / ${escHtml(environment.name)}`}</div>` +
+        `<div class="manage-form-grid">` +
+          ENVIRONMENT_FIELDS.map(field =>
+            field === 'notes'
+              ? ''
+              : formField(field, `env-f-${field}`, original[field] ?? '', field)
+          ).join('') +
+        `</div>` +
+        `<label class="form-label" for="env-f-notes">notes</label>` +
+        `<textarea class="form-textarea" id="env-f-notes" rows="3">${escHtml(original.notes || '')}</textarea>` +
+        `<div class="manage-banner hidden" id="env-form-error" style="margin-top:8px"></div>` +
+        `<div class="manage-form-actions"${!isNew ? ' style="justify-content:space-between"' : ''}>` +
+              (!isNew ? `<button class="btn btn-sm btn-danger" id="btn-env-form-del">Eliminar ambiente</button>` : '') +
+              `<div style="display:flex;gap:8px;margin-left:auto">` +
+                `<button class="btn btn-sm btn-ghost" id="btn-env-form-cancel">Cancelar</button>` +
+                `<button class="btn btn-sm btn-primary" id="btn-env-form-save">${isNew ? 'Agregar ambiente' : 'Guardar ambiente'}</button>` +
+              `</div>` +
+            `</div>` +
+          `</div>`;
 
-    const grid = document.createElement('div');
-    grid.className = 'environment-form-grid';
-    for (const field of ENVIRONMENT_FIELDS) {
-      grid.appendChild(managementField(field, field, original[field], { required: ['name', 'server'].includes(field), textarea: field === 'notes' }));
-    }
-    box.appendChild(grid);
+    const showFormErr = (msg) => {
+      const el = document.getElementById('env-form-error');
+      el.textContent = msg;
+      el.className = 'manage-banner manage-banner-error';
+    };
 
-    const actions = document.createElement('div');
-    actions.className = 'environment-actions';
-    if (isNew) {
-      const cancel = document.createElement('button');
-      cancel.className = 'btn btn-ghost btn-project-secondary';
-      cancel.textContent = 'Cancelar';
-      cancel.addEventListener('click', close);
-      actions.appendChild(cancel);
-    } else {
-      const remove = document.createElement('button');
-      remove.className = 'btn btn-danger btn-project-danger';
-      remove.textContent = 'Eliminar ambiente';
-      remove.addEventListener('click', async () => {
+    box.querySelector('#btn-env-form-cancel').addEventListener('click', close);
+
+    if (!isNew) {
+      box.querySelector('#btn-env-form-del').addEventListener('click', async () => {
         const confirmed = await confirmDialogRef(
           'Eliminar ambiente',
           `Se eliminará ${project.id}/${environment.name}.`,
@@ -589,17 +804,18 @@ function showEnvironmentModal(project, environment = null) {
         );
         if (result) close();
       });
-      actions.appendChild(remove);
     }
 
-    const save = document.createElement('button');
-    save.className = 'btn btn-primary btn-project-primary';
-    save.textContent = isNew ? 'Agregar ambiente' : 'Guardar ambiente';
-    save.addEventListener('click', async () => {
-      const values = readFields(box, ENVIRONMENT_FIELDS);
-      if (!requiredFieldsPresent(values, ['name', 'server'])) return;
+    box.querySelector('#btn-env-form-save').addEventListener('click', async () => {
+      const values = {};
+      for (const field of ENVIRONMENT_FIELDS) values[field] = document.getElementById(`env-f-${field}`).value.trim();
+
+      if (!values.name || !values.server) {
+        showFormErr('Nombre y server son obligatorios.');
+        return;
+      }
       if (!!values.host !== !!values.remotePath) {
-        showProjectsBanner('host y remotePath deben completarse juntos.', true);
+        showFormErr('host y remotePath deben completarse juntos.');
         return;
       }
 
@@ -627,146 +843,7 @@ function showEnvironmentModal(project, environment = null) {
       );
       if (result) close();
     });
-    actions.appendChild(save);
-    box.appendChild(actions);
   }, { size: 'standard' });
-}
-
-function showProjectMetadataModal(project) {
-  openEditModal((box, close) => {
-    box.appendChild(projectMetadataGrid(project));
-
-    const actions = document.createElement('div');
-    actions.className = 'project-editor-actions';
-    const remove = document.createElement('button');
-    remove.className = 'btn btn-danger btn-project-danger';
-    remove.textContent = 'Eliminar proyecto';
-    remove.addEventListener('click', async () => {
-      const confirmed = await confirmDialogRef(
-        'Eliminar proyecto',
-        `Escribí ${project.id} para confirmar la eliminación.`,
-        true,
-        project.id,
-      );
-      if (!confirmed) return;
-      await projectWrite(
-        'DELETE',
-        `/api/projects/${encodeURIComponent(project.id)}`,
-        {},
-        `Proyecto ${project.id} eliminado.`,
-      );
-      close();
-    });
-
-    const save = document.createElement('button');
-    save.className = 'btn btn-primary btn-project-primary';
-    save.textContent = 'Guardar metadata';
-    save.addEventListener('click', async () => {
-      const values = readFields(box, PROJECT_FIELDS);
-      if (!requiredFieldsPresent(values, ['name', 'type', 'category', 'status', 'client'])) return;
-      const changes = {};
-      for (const field of PROJECT_FIELDS) {
-        if (values[field] !== String(project[field] ?? '')) changes[field] = values[field];
-      }
-      const result = await projectWrite(
-        'PATCH',
-        `/api/projects/${encodeURIComponent(project.id)}`,
-        { changes },
-        `Proyecto ${project.id} actualizado.`,
-      );
-      if (result) close();
-    });
-    actions.append(remove, save);
-    box.appendChild(actions);
-  }, { size: 'standard' });
-}
-
-function renderProjectEditor(project) {
-  const details = document.createElement('details');
-  details.className = 'project-editor';
-  details.dataset.projectId = project.id;
-
-  const environments = project.environments?.length ?? 0;
-  const summary = document.createElement('summary');
-  summary.innerHTML =
-    `<span class="project-editor-id">${escHtml(project.id)}</span>` +
-    `<span class="project-editor-name">${escHtml(project.name)}</span>` +
-    `<span class="project-editor-count">${environments} env</span>`;
-  details.appendChild(summary);
-
-  const content = document.createElement('div');
-  content.className = 'project-editor-content';
-
-  const metadataActions = document.createElement('div');
-  metadataActions.className = 'project-editor-actions';
-  const editMeta = document.createElement('button');
-  editMeta.className = 'btn btn-ghost btn-project-secondary';
-  editMeta.textContent = '✎ Editar metadata';
-  editMeta.addEventListener('click', () => showProjectMetadataModal(project));
-  metadataActions.appendChild(editMeta);
-  content.appendChild(metadataActions);
-
-  if (project.access && project.environments === undefined) {
-    const access = document.createElement('div');
-    access.className = 'project-access-readonly';
-    access.innerHTML = '<div class="project-subtitle">ACCESOS</div>';
-    for (const acc of project.access) {
-      const row = document.createElement('div');
-      row.className = 'env-block-field';
-      if (acc.method === 'web') {
-        row.innerHTML =
-          `<span class="env-field-label">web</span>` +
-          `<a class="env-field-value mono" href="${escHtml(acc.url)}" target="_blank" rel="noopener">${escHtml(acc.label || acc.url)}</a>`;
-      } else if (acc.method === 'ssh') {
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-ghost btn-project-secondary';
-        btn.textContent = `⬡ Conectar SSH (${acc.user}@${acc.host})`;
-        btn.addEventListener('click', () => openSsh(project.id, acc.host, acc.user, btn));
-        row.innerHTML = `<span class="env-field-label">ssh</span>`;
-        row.appendChild(btn);
-      } else {
-        row.innerHTML =
-          `<span class="env-field-label">${escHtml(acc.method)}</span>` +
-          `<span class="env-field-value mono">${escHtml(acc.host || acc.url || '')}</span>`;
-      }
-      access.appendChild(row);
-    }
-    content.appendChild(access);
-  } else {
-    const environmentsHeader = document.createElement('div');
-    environmentsHeader.className = 'project-environments-header';
-    environmentsHeader.innerHTML = '<span class="project-subtitle">AMBIENTES</span>';
-    const addEnvironment = document.createElement('button');
-    addEnvironment.className = 'btn btn-ghost btn-project-secondary';
-    addEnvironment.textContent = '＋ Ambiente';
-    addEnvironment.addEventListener('click', () => showEnvironmentModal(project));
-    environmentsHeader.appendChild(addEnvironment);
-
-    const environmentList = document.createElement('div');
-    environmentList.className = 'environment-editor-list';
-    for (const environment of (project.environments || [])) {
-      environmentList.appendChild(environmentSummaryRow(project, environment));
-    }
-    content.append(environmentsHeader, environmentList);
-  }
-
-  details.appendChild(content);
-  return details;
-}
-
-function renderProjectManagement() {
-  const container = document.getElementById('projects-manage-container');
-  container.innerHTML = '';
-  if (!registryData) return;
-  for (const project of registryData.projects) container.appendChild(renderProjectEditor(project));
-}
-
-function toggleProjectManagement(force) {
-  projectManageMode = force === undefined ? !projectManageMode : force;
-  document.getElementById('projects-container').classList.toggle('hidden', projectManageMode);
-  document.getElementById('projects-manage-container').classList.toggle('hidden', !projectManageMode);
-  document.getElementById('btn-project-manage').textContent = projectManageMode ? '← Vista' : '⚙ Gestionar';
-  if (projectManageMode) renderProjectManagement();
 }
 
 export function initProjects({ onUpdate, confirmDialog } = {}) {
@@ -781,9 +858,6 @@ export function initProjects({ onUpdate, confirmDialog } = {}) {
     savedProjectsGroupBtn.classList.add('active');
   }
 
-  document.getElementById('btn-project-manage').addEventListener('click', () => {
-    toggleProjectManagement();
-  });
   document.getElementById('btn-project-add').addEventListener('click', () => {
     showNewProjectModal();
   });

@@ -90,20 +90,44 @@ export function showManageBanner(id, msg, isError = false) {
   setTimeout(() => el.classList.add('hidden'), 5000);
 }
 
-export function openEditModal(renderInto, { size = 'standard' } = {}) {
+export function openEditModal(renderInto, { size = 'standard', title = '' } = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay infra-edit-modal';
   const box = document.createElement('div');
   box.className = size === 'compact'
     ? 'modal-box infra-edit-modal-box infra-edit-modal-compact'
     : 'modal-box infra-edit-modal-box';
+
+  // Header con botón de cierre (X) — siguiendo el patrón de json-modal-header
+  const header = document.createElement('div');
+  header.className = 'infra-edit-modal-header';
+  header.innerHTML = `
+    <span class="infra-edit-modal-title"></span>
+    <button class="infra-edit-modal-close" aria-label="Cerrar">✕</button>
+  `;
+  box.appendChild(header);
+
+  const content = document.createElement('div');
+  content.className = 'infra-edit-modal-content';
+  box.appendChild(content);
+
   overlay.appendChild(box);
   document.body.appendChild(overlay);
+
+  // Título opcional
+  if (title) {
+    header.querySelector('.infra-edit-modal-title').textContent = title;
+  }
+
   // Regla VCC: los modales de edición nunca cierran con clic afuera -- solo Escape o los
   // botones Cancelar/Guardar/X (formularios largos, un clic accidental no debe perder lo tipeado).
   const onKeydown = (e) => { if (e.key === 'Escape') close(); };
   const close = () => { document.removeEventListener('keydown', onKeydown); overlay.remove(); };
   document.addEventListener('keydown', onKeydown);
-  renderInto(box, close);
+
+  // Botón X en el header
+  header.querySelector('.infra-edit-modal-close').addEventListener('click', close);
+
+  renderInto(content, close);
   return close;
 }

@@ -367,7 +367,7 @@ function showTunnelModal(tunnel) {
       const ok = await saveTunnelConfig(updated);
       if (ok) close();
     });
-  }, { size: 'standard' });
+  }, { size: 'standard', title: tunnel ? `Editar: ${tunnel.name}` : 'Nuevo túnel' });
 }
 
 async function saveTunnelConfig(tunnels) {

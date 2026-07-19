@@ -1016,17 +1016,13 @@ button { font-family: var(--font-ui); }
 
 .projects-registry-state,
 .projects-toolbar-actions,
-.project-editor-actions,
-.environment-actions,
 .project-environments-header {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.projects-registry-label,
-.project-subtitle,
-.project-editor-title {
+.projects-registry-label {
   color: var(--text-faint);
   font-size: 0.6rem;
   font-weight: 600;
@@ -1044,11 +1040,7 @@ button { font-family: var(--font-ui); }
   padding: 2px 6px;
 }
 
-.btn-project-add,
-.btn-project-manage,
-.btn-project-primary,
-.btn-project-secondary,
-.btn-project-danger {
+.btn-project-add {
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: 5px;
@@ -1056,24 +1048,12 @@ button { font-family: var(--font-ui); }
   cursor: pointer;
   background: none;
   border: 1px solid var(--border-2);
-  color: var(--text-muted);
+  color: var(--accent-2);
+  border-color: rgba(99, 102, 241, 0.3);
   transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
 
-.btn-project-add,
-.btn-project-primary {
-  color: var(--accent-2);
-  border-color: rgba(99, 102, 241, 0.3);
-}
-
-.btn-project-add:hover,
-.btn-project-primary:hover { background: var(--accent-glow); }
-
-.btn-project-manage:hover,
-.btn-project-secondary:hover { color: var(--text); border-color: var(--border-2); }
-
-.btn-project-danger { color: var(--danger); border-color: rgba(239, 68, 68, 0.28); }
-.btn-project-danger:hover { background: rgba(239, 68, 68, 0.08); }
+.btn-project-add:hover { background: var(--accent-glow); }
 
 .projects-banner {
   margin-bottom: 12px;
@@ -1142,6 +1122,73 @@ button { font-family: var(--font-ui); }
   border: 1px solid var(--border-2);
   border-radius: 3px;
   padding: 1px 6px;
+}
+
+/* Botones de acción en el header de la card (Gestionar, Desactivar/Activar) */
+.project-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ── Project card dropdown menu (kebab) ─────────────────────────── */
+.project-actions-row {
+  position: relative;
+}
+.project-menu-trigger {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.project-card:hover .project-menu-trigger { opacity: 1; }
+.project-menu-trigger:hover { color: var(--accent); background: var(--surface-2); }
+.project-menu-trigger:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
+.project-menu-trigger.open { color: var(--accent); }
+
+.project-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 160px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  z-index: 50;
+  overflow: hidden;
+}
+.project-menu.hidden { display: none; }
+
+.project-menu-item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.project-menu-item:hover { background: var(--surface-3); color: var(--accent); }
+.project-menu-item:focus-visible { outline: none; background: var(--surface-3); color: var(--accent); }
+.project-menu-item--danger { color: var(--danger); }
+.project-menu-item--danger:hover { background: rgba(239,68,68,0.12); color: var(--danger); }
+
+/* Separador opcional entre grupos */
+.project-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 
 /* Líneas de info — misma clase que infra */
@@ -1317,45 +1364,7 @@ button { font-family: var(--font-ui); }
 }
 
 /* Project management / editors */
-#projects-manage-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-#projects-manage-container.hidden { display: none; }
-
-.project-editor {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.project-editor[open] { border-color: var(--border-2); }
-.project-editor-new { padding: 14px; border-left: 3px solid var(--accent); }
 .project-editor-title { margin-bottom: 12px; color: var(--accent-2); font-weight: 600; font-size: 0.8rem; }
-
-.project-editor > summary,
-.environment-editor > summary {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  padding: 10px 14px;
-  user-select: none;
-  list-style: none;
-}
-
-.project-editor > summary::-webkit-details-marker { display: none; }
-.project-editor > summary::before { content: '▶'; font-size: 0.58rem; color: var(--text-faint); }
-.project-editor[open] > summary::before { content: '▼'; }
-
-.project-editor-id   { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-faint); }
-.project-editor-name { font-size: 0.82rem; font-weight: 600; flex: 1; }
-.project-editor-count { font-size: 0.65rem; color: var(--text-faint); }
-
-.project-editor-content { padding: 0 14px 14px; }
 
 .project-form-grid {
   display: grid;
@@ -1409,39 +1418,108 @@ button { font-family: var(--font-ui); }
   margin-bottom: 8px;
 }
 
+/* ── Project environments list (modal) ─────────────────────── */
+.project-environments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-2);
+}
+.project-environments-header .form-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.environment-summary-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.environment-summary-row:hover {
+  border-color: var(--border-2);
+  background: var(--surface-3);
+}
+.environment-name {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.environment-server {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.environment-summary-row .btn {
+  flex-shrink: 0;
+}
+
+/* ── Project environments editor (details-based) ─────────────── */
 .environment-editor-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .environment-editor {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .environment-editor > summary {
-  padding: 8px 12px;
-  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
 }
-
 .environment-editor > summary::-webkit-details-marker { display: none; }
-.environment-editor > summary::before { content: '▶'; font-size: 0.56rem; color: var(--text-faint); margin-right: 4px; }
-.environment-editor[open] > summary::before { content: '▼'; }
+.environment-editor > summary::before {
+  content: '▶';
+  font-size: 0.56rem;
+  color: var(--text-faint);
+  margin-right: 4px;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.environment-editor[open] > summary::before { transform: rotate(90deg); }
 
-.environment-name   { font-weight: 600; color: var(--text); margin-right: 10px; }
+.environment-name { font-weight: 600; color: var(--text); margin-right: 10px; }
 .environment-server { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-faint); }
 
 .environment-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
+.environment-form-grid .form-field { margin-bottom: 0; }
+.environment-form-grid .form-input { font-size: 0.76rem; padding: 6px 10px; }
 
-.environment-actions { padding: 8px 12px; gap: 6px; }
+.environment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.environment-actions .btn { flex-shrink: 0; }
 
 /* ── 10. M3 — Gobernanza ───────────────────────────────── */
 .govern-grid {
@@ -2407,7 +2485,19 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
 .infra-edit-modal { align-items: flex-start; padding-top: 5vh; }
 /* .modal-box.infra-edit-modal-box (2 clases) para ganarle en especificidad a .modal-box genérico
    (420px) -- con la misma especificidad (una clase c/u) gana el que aparece despues en el archivo. */
-.modal-box.infra-edit-modal-box { width: min(920px, 96vw); max-height: 88vh; overflow-y: auto; }
+.modal-box.infra-edit-modal-box {
+  width: min(920px, 96vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 0; /* header y content tienen su propio padding */
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
 /* Modal mas ancho -> permite 3-4 columnas reales en vez de 1-2 con el mismo minmax(220px) global */
 .infra-edit-modal-box .manage-form-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 /* Ancho compacto -- formularios chicos (2-4 campos: Links, Tipos, dominio SSL, motivo de
@@ -2527,27 +2617,28 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
 }
 .btn-manage-del:hover { border-color: var(--danger); color: var(--danger); }
 
-/* Formulario de servidor */
+/* Formulario dentro de modal — SIN fondo/border propio (el modal ya lo tiene) */
 .manage-form {
-  background: var(--surface-2);
-  border: 1px solid var(--border-2);
-  border-radius: 8px;
-  padding: 16px;
-  margin: 12px 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
 }
 .manage-form-title {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
   color: var(--text);
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .manage-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
-.form-field { display: flex; flex-direction: column; margin-bottom: 12px; }
+.form-field { display: flex; flex-direction: column; }
 .form-label {
   font-size: 0.65rem;
   font-weight: 600;
@@ -2560,10 +2651,10 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
 .form-input, .form-textarea {
   background: var(--surface);
   border: 1px solid var(--border-2);
-  border-radius: 5px;
+  border-radius: 6px;
   color: var(--text);
   font-size: 0.78rem;
-  padding: 6px 10px;
+  padding: 7px 11px;
   font-family: var(--font-ui);
   width: 100%;
   box-sizing: border-box;
@@ -2578,18 +2669,22 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-2);
 }
 
 /* ── 16. Modal ─────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 20px;
 }
 
 .modal-overlay.hidden { display: none; }
@@ -2602,25 +2697,42 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
 .modal-box {
   background: var(--surface);
   border: 1px solid var(--border-2);
-  border-radius: 10px;
-  padding: 24px;
-  width: 420px;
-  max-width: 90vw;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  padding: 0;
+  width: min(520px, 92vw);
+  max-height: 90vh;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.02) inset;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-2);
 }
 
 .modal-title {
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
   color: var(--text);
-  margin-bottom: 10px;
 }
 
+.modal-close {
+  background: none; border: none;
+  color: var(--text-faint); cursor: pointer;
+  font-size: 1rem; padding: 2px 6px; border-radius: 4px;
+}
+.modal-close:hover { background: var(--surface-2); color: var(--text); }
+
 .modal-body {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  line-height: 1.55;
-  margin-bottom: 20px;
+  flex: 1;
+  padding: 18px;
+  overflow-y: auto;
 }
 
 .modal-confirm-input {
@@ -2641,6 +2753,8 @@ a.infra-ip:hover { color: var(--accent); text-decoration: underline; }
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-2);
 }
 
 .btn-modal-cancel,
@@ -3960,8 +4074,7 @@ html[data-theme="light"] .btn-infra-monitored.active {
 .btn-ssl-refresh,
 .btn-ssl-manage,
 .btn-ssl-action,
-.btn-project-add, .btn-project-manage,
-.btn-project-primary, .btn-project-secondary, .btn-project-danger,
+.btn-project-add,
 .btn-manage-close,
 .btn-modal-ok, .btn-modal-cancel,
 .btn-clear,
@@ -4406,4 +4519,30 @@ html[data-theme="light"] .btn-infra-monitored.active {
   display: flex;
   gap: 0.75rem;
   margin-top: 0.75rem;
+}
+
+/* ── Infra Edit Modal (patrón idéntico a json-modal-header) ─────── */
+.infra-edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-2);
+}
+.infra-edit-modal-title {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.infra-edit-modal-close {
+  background: none; border: none;
+  color: var(--text-faint); cursor: pointer;
+  font-size: 1rem; padding: 2px 6px; border-radius: 4px;
+}
+.infra-edit-modal-close:hover { background: var(--surface-2); color: var(--text); }
+.infra-edit-modal-content {
+  flex: 1;
+  padding: 14px 18px;
+  overflow-y: auto;
 }

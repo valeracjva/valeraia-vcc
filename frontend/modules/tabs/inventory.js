@@ -469,7 +469,7 @@ function renderInventoryManage() {
 }
 
 function showInventoryModal(srv) {
-  openEditModal((box, close) => showInventoryForm(srv, box, close));
+  openEditModal((box, close) => showInventoryForm(srv, box, close), { title: srv ? `Editar: ${srv.id}` : 'Nuevo servidor' });
 }
 
 function showInventoryForm(srv, container, onClose) {

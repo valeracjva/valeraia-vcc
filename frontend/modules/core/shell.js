@@ -102,8 +102,10 @@ export function confirmDialog(title, body, danger = false, expectedText = null) 
     document.getElementById('confirm-body').textContent  = body;
     const ok     = document.getElementById('confirm-ok');
     const cancel = document.getElementById('confirm-cancel');
+    const close  = document.getElementById('confirm-close');
     const input  = document.getElementById('confirm-input');
-    ok.className = danger ? 'btn btn-danger btn-modal-ok' : 'btn btn-primary btn-modal-ok';
+    ok.className = danger ? 'btn-modal-ok danger' : 'btn-modal-ok';
+    cancel.className = 'btn-modal-cancel';
     input.classList.toggle('hidden', !expectedText);
     input.value = '';
     input.placeholder = expectedText ? `Escribí ${expectedText}` : '';
@@ -115,6 +117,7 @@ export function confirmDialog(title, body, danger = false, expectedText = null) 
       document.getElementById('confirm-modal').classList.add('hidden');
       ok.removeEventListener('click', onOk);
       cancel.removeEventListener('click', onCancel);
+      close.removeEventListener('click', onCancel);
       input.removeEventListener('input', onInput);
       input.classList.add('hidden');
       ok.disabled = false;
@@ -125,6 +128,7 @@ export function confirmDialog(title, body, danger = false, expectedText = null) 
     const onInput  = () => { ok.disabled = input.value !== expectedText; };
     ok.addEventListener('click', onOk);
     cancel.addEventListener('click', onCancel);
+    close.addEventListener('click', onCancel);
     input.addEventListener('input', onInput);
   });
 }

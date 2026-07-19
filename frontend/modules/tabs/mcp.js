@@ -360,7 +360,7 @@ function renderMcpManage() {
 }
 
 function showMcpModal(mcp) {
-  openEditModal((box, close) => showMcpForm(mcp, box, close));
+  openEditModal((box, close) => showMcpForm(mcp, box, close), { title: mcp ? `Editar: ${mcp.name}` : 'Nuevo MCP' });
 }
 
 function showMcpForm(mcp, container, onClose) {

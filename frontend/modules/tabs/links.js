@@ -333,7 +333,7 @@ function showLinksForm(link) {
         showManageBanner('links-f-save-error', `Error al guardar: ${err.message}`, true);
       }
     });
-  }, { size: 'compact' });
+  }, { size: 'compact', title: link ? 'Editar link' : 'Nuevo link' });
 }
 
 // === Gestión de tipos (CRUD) ===
