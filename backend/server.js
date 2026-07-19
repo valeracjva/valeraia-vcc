@@ -26,6 +26,7 @@ import mcpRouter       from './routes/mcp.js';
 import linksRouter     from './routes/links.js';
 import sessionsRouter  from './routes/sessions.js';
 import agentsRouter    from './routes/agents.js';
+import vaultRouter     from './routes/vault.js';
 import monitoringCoreRouter from './routes/monitoring-core.js';
 import { startPoller } from './monitoring-core/poller.js';
 
@@ -69,6 +70,7 @@ app.use('/api/agents',    agentsRouter);
 app.use('/api/apis',      apisRouter);
 app.use('/api/mcp',       mcpRouter);
 app.use('/api/sessions',   sessionsRouter);
+app.use('/api/vault',      vaultRouter);
 
 // CORS abierto solo para POST /api/links: el bookmarklet corre en el origen
 // de la pestaña que el usuario esté visitando, no en localhost. Peor caso:

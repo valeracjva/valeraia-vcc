@@ -95,6 +95,10 @@
           <span class="nav-icon">⛓</span>
           <span class="nav-label">Links</span>
         </button>
+        <button class="tab-btn nav-item" data-tab="vault" title="Secretos">
+          <span class="nav-icon">🔑</span>
+          <span class="nav-label">Secretos</span>
+        </button>
       </nav>
 
       <div class="sidebar-status">
@@ -349,6 +353,19 @@
           <div id="links-container"></div>
         </div>
         <div class="hidden" id="links-tipos-manage-container"></div>
+      </div>
+
+      <!-- Tab: Secretos -->
+      <div class="tab-panel hidden" id="tab-vault">
+        <div class="vault-toolbar view-toolbar">
+          <div class="view-toolbar-start">
+            <span class="view-title">🔑 Secretos</span>
+          </div>
+          <div class="view-toolbar-end">
+            <button class="btn btn-ssl-refresh" id="btn-vault-refresh">↻ Recargar</button>
+          </div>
+        </div>
+        <div id="vault-container"></div>
       </div>
 
       <div class="tab-panel hidden" id="tab-infra">

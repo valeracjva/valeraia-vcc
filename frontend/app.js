@@ -15,6 +15,7 @@ import { initOpsMap, loadOpsMap } from './modules/tabs/opsmap.js';
 import { initMcp, loadMcp } from './modules/tabs/mcp.js';
 import { initInventory, loadInventory, loadMetrics, METRICS_INTERVAL_MS } from './modules/tabs/inventory.js';
 import { initLinks, loadLinks } from './modules/tabs/links.js';
+import { initVault, loadVault } from './modules/tabs/vault.js';
 
 const RISK_ICONS = { bajo: '▲', medio: '▲▲', alto: '▲▲▲', crítico: '⬛' };
 
@@ -158,6 +159,7 @@ async function init() {
       if (tab === 'agentes') loadAgents();
       if (tab === 'mcp') loadMcp();
       if (tab === 'links') loadLinks();
+      if (tab === 'vault') loadVault();
     },
   });
   initProjects({ onUpdate: update, confirmDialog });
@@ -171,6 +173,7 @@ async function init() {
   initAgents();
   initMcp({ confirmDialog });
   initLinks({ confirmDialog });
+  initVault({ confirmDialog });
   initJsonModal();
   registerGovernStreamSink(handleActivityEvent);
   connectGovernWS();

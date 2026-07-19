@@ -23,6 +23,7 @@ export const PATHS = {
   serverInventory: path.join(WORKSPACE_ROOT, 'global', 'servers', 'SERVER_INVENTORY.md'),
   serversConfig:   path.join(VCC_DATA, 'servers-config.json'),
   linksInventory:  path.join(VCC_DATA, 'links-inventory.json'),
+  secretsDir:      path.join('D:', 'Workspace-Repos', 'secrets'),
   launcherScripts: path.join(WORKSPACE_ROOT, 'scripts', 'launcher-infra'),
 };
 
