@@ -52,6 +52,7 @@ export async function loadProjects() {
     renderProjects(registryData.projects);
   } catch (e) {
     console.error('[VCC] loadProjects error:', e.message);
+    container.innerHTML = `<div class="infra-loading" style="color:var(--red)">Error al cargar proyectos: ${escHtml(e.message)}</div>`;
     showProjectsBanner('No se pudo cargar el registry.', true);
   }
 }
