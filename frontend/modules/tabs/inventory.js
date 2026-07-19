@@ -9,7 +9,7 @@ import { loadState, saveState } from '../core/persist.js';
 export const RISK_COLORS = {
   bajo:     'var(--success)',
   moderado: 'var(--warning)',
-  alto:     '#F97316',
+  alto:     'var(--risk-alto)',
   critico:  'var(--danger)',
 };
 const RISK_LABELS = {

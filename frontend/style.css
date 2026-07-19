@@ -27,6 +27,9 @@
   --danger:      #EF4444;
   --info:        #3B82F6;
 
+  /* Risk alto — token exclusivo sin variante de light theme */
+  --risk-alto:   #F97316;
+
   /* Decorativos — sin significado compartido en otras vistas, solo para paletas abiertas (ej. Tipos de Links) */
   --tag-teal:    #14B8A6;
   --tag-purple:  #A855F7;
@@ -2086,7 +2089,7 @@ button { font-family: var(--font-ui); }
 
 .infra-card.risk-bajo     { border-left: 3px solid var(--success); }
 .infra-card.risk-moderado { border-left: 3px solid var(--warning); }
-.infra-card.risk-alto     { border-left: 3px solid #F97316; }
+.infra-card.risk-alto     { border-left: 3px solid var(--risk-alto); }
 .infra-card.risk-critico  { border-left: 3px solid var(--danger); }
 
 .infra-card-header {
