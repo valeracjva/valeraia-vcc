@@ -1,5 +1,5 @@
 import { get, apiFetch } from '../core/api.js';
-import { escHtml, openEditModal, formField } from '../core/dom.js';
+import { escHtml, openEditModal, formField, formSelect } from '../core/dom.js';
 
 let confirmDialogRef = null;
 let vaultCategories = [];
@@ -7,16 +7,51 @@ let vaultData = new Map();      // category -> { keys: [...] }
 let expanded = new Set();       // categorías expandidas
 let editing = new Set();        // "category:key"
 let revealed = new Set();       // "category:key"
+const VAULT_VIEW_KEY = 'vcc-vault-view';
+let activeVaultModal = null;
 
 const cssEsc = (value) => {
   const s = String(value ?? '');
   return globalThis.CSS?.escape ? CSS.escape(s) : s.replace(/"/g, '\\"');
 };
 
+const SECRETS_DIR = 'D:\\Workspace-Repos\\secrets';
+
+const envPathFor = (category, file) => {
+  const cat = vaultCategories.find(c => c.category === category);
+  const value = cat?.file_path ?? cat?.path ?? file ?? `${category}.env`;
+  return /^[A-Za-z]:[\\/]/.test(value) ? value : `${SECRETS_DIR}\\${value}`;
+};
+
 export function initVault({ confirmDialog } = {}) {
   confirmDialogRef = confirmDialog ?? null;
   document.getElementById('btn-vault-refresh')?.addEventListener('click', () => loadVault());
+  document.getElementById('btn-vault-manage')?.addEventListener('click', () => showVaultManageModal());
   document.getElementById('vault-container')?.addEventListener('click', onVaultClick);
+  document.getElementById('vault-container')?.addEventListener('keydown', onVaultKeydown);
+  document.querySelectorAll('.btn-vault-view').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setVaultView(btn.dataset.vaultView === 'list' ? 'list' : 'cards');
+      renderVault();
+    });
+  });
+  syncVaultViewButtons();
+}
+
+function getVaultView() {
+  return localStorage.getItem(VAULT_VIEW_KEY) === 'list' ? 'list' : 'cards';
+}
+
+function setVaultView(view) {
+  localStorage.setItem(VAULT_VIEW_KEY, view);
+  syncVaultViewButtons();
+}
+
+function syncVaultViewButtons() {
+  const view = getVaultView();
+  document.querySelectorAll('.btn-vault-view').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.vaultView === view);
+  });
 }
 
 export async function loadVault() {
@@ -48,6 +83,14 @@ function renderVault() {
   const container = document.getElementById('vault-container');
   if (!container) return;
 
+  syncVaultViewButtons();
+
+  if (getVaultView() === 'list') {
+    container.innerHTML = '';
+    container.appendChild(renderVaultList());
+    return;
+  }
+
   const grid = document.createElement('div');
   grid.className = 'vault-grid';
 
@@ -59,11 +102,41 @@ function renderVault() {
   container.appendChild(grid);
 }
 
+function renderVaultList() {
+  const table = document.createElement('table');
+  table.className = 'data-table vault-list-table';
+  table.innerHTML = `
+    <thead><tr>
+      <th>CATEGORÍA</th><th>ARCHIVO</th><th>RUTA</th><th>CLAVES</th><th>MODIFICADO</th><th>ACCIONES</th>
+    </tr></thead>`;
+
+  const tbody = document.createElement('tbody');
+  for (const cat of vaultCategories) {
+    const count = Number.isFinite(cat.keys_count) ? cat.keys_count : 0;
+    const tr = document.createElement('tr');
+    tr.dataset.category = cat.category;
+    tr.innerHTML = `
+      <td><strong class="vault-list-category">${escHtml(cat.category)}</strong></td>
+      <td><code>${escHtml(cat.file)}</code></td>
+      <td><code class="vault-file-path" title="${escHtml(envPathFor(cat.category, cat.file))}">${escHtml(envPathFor(cat.category, cat.file))}</code></td>
+      <td>${count}</td>
+      <td class="vault-list-date">${new Date(cat.modified_at).toLocaleString('es-AR')}</td>
+      <td class="vault-list-actions">
+        <button class="btn btn-sm btn-ghost" data-vault-action="open-modal" data-category="${escHtml(cat.category)}">Ver secretos</button>
+        <button class="btn btn-sm btn-primary" data-vault-action="add" data-category="${escHtml(cat.category)}">＋ Agregar</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  return table;
+}
+
 function renderCategoryCard(cat) {
   const data = vaultData.get(cat.category);
   const keys = data?.keys ?? [];
   const isOpen = expanded.has(cat.category);
   const count = Number.isFinite(cat.keys_count) ? cat.keys_count : keys.length;
+  const filePath = envPathFor(cat.category, cat.file);
 
   const card = document.createElement('section');
   card.className = 'infra-card vault-card';
@@ -80,19 +153,24 @@ function renderCategoryCard(cat) {
   const previewMore = keys.length > 2 ? `<span class="vault-preview-more">+${keys.length - 2}</span>` : '';
 
   card.innerHTML = `
-    <header class="vault-card-header" data-vault-toggle="${escHtml(cat.category)}">
-      <div class="vault-card-title-row">
-        <div class="vault-card-title-wrap">
-          <div class="vault-card-title">⚿ ${escHtml(cat.category)}</div>
-          <div class="vault-card-subtitle">${escHtml(cat.file)}</div>
-        </div>
-        <span class="vault-card-badge">${count} claves</span>
+    <header class="vault-card-header" data-vault-toggle="${escHtml(cat.category)}" role="button" tabindex="0" aria-expanded="${isOpen}">
+      <div class="infra-card-header vault-card-status-row">
+        <span class="infra-dot vault-dot"></span>
+        <span class="infra-risk-badge vault-card-badge">SECRETO</span>
+        <span class="vault-card-count">${count} claves</span>
+        <span class="vault-card-state">${isOpen ? 'abierta' : 'cerrada'}</span>
       </div>
-      <div class="vault-card-meta">
-        <span>${new Date(cat.modified_at).toLocaleString('es-AR')}</span>
-        <span>${isOpen ? 'abierta' : 'cerrada'}</span>
+      <div class="infra-card-row2 vault-card-row2">
+        <span class="infra-id vault-card-title" title="${escHtml(cat.category)}">${escHtml(cat.category)}</span>
+        <span class="infra-ip vault-card-file" title="${escHtml(cat.file)}">${escHtml(cat.file)}</span>
       </div>
+      <div class="vault-card-path" title="${escHtml(filePath)}">${escHtml(filePath)}</div>
+      <div class="infra-empresa vault-card-meta">Modificado ${new Date(cat.modified_at).toLocaleString('es-AR')}</div>
       ${!isOpen ? `<div class="vault-preview">${previewKeys}${previewMore}</div>` : ''}
+      <div class="infra-toggle vault-card-toggle" data-open="${isOpen}">
+        <span class="infra-arrow">${isOpen ? '▼' : '▶'}</span>
+        <span class="infra-toggle-label">${isOpen ? 'Ocultar claves' : 'Ver claves'}</span>
+      </div>
     </header>
   `;
 
@@ -101,11 +179,14 @@ function renderCategoryCard(cat) {
 }
 
 function renderCategoryBody(category, keys, file, modifiedAt) {
-  if (!keys.length) {
+  const sortedKeys = [...keys].sort((a, b) => a.key.localeCompare(b.key, 'es'));
+  const filePath = envPathFor(category, file);
+
+  if (!sortedKeys.length) {
     return `
       <div class="vault-empty vault-empty-inline">
         <div class="vault-empty-title">Sin secretos en esta categoría</div>
-        <div class="vault-empty-text">${escHtml(file)} · mod: ${new Date(modifiedAt).toLocaleString('es-AR')}</div>
+        <div class="vault-empty-text">${escHtml(filePath)} · mod: ${new Date(modifiedAt).toLocaleString('es-AR')}</div>
       </div>
       <div class="vault-card-actions">
         <button class="btn btn-sm btn-primary" data-vault-action="add" data-category="${escHtml(category)}">＋ Agregar secreto</button>
@@ -115,12 +196,44 @@ function renderCategoryBody(category, keys, file, modifiedAt) {
 
   return `
     <div class="vault-entries">
-      ${keys.map(k => renderEntry(category, k)).join('')}
+      ${sortedKeys.map(k => renderEntry(category, k)).join('')}
     </div>
     <div class="vault-card-actions">
       <button class="btn btn-sm btn-primary" data-vault-action="add" data-category="${escHtml(category)}">＋ Agregar secreto</button>
     </div>
   `;
+}
+
+function renderCategoryModalContent(category, content) {
+  const cat = vaultCategories.find(c => c.category === category);
+  const data = vaultData.get(category);
+  const keys = data?.keys ?? [];
+  const file = cat?.file ?? `${category}.env`;
+  const filePath = data?.file_path ?? envPathFor(category, file);
+  const modifiedAt = cat?.modified_at ?? data?.modified_at ?? new Date().toISOString();
+  content.innerHTML = `
+    <div class="vault-modal-meta">
+      <span><strong>${escHtml(file)}</strong></span>
+      <span class="vault-modal-path" title="${escHtml(filePath)}">${escHtml(filePath)}</span>
+      <span>${keys.length} claves</span>
+      <span>Modificado ${new Date(modifiedAt).toLocaleString('es-AR')}</span>
+    </div>
+    ${renderCategoryBody(category, keys, file, modifiedAt)}
+  `;
+}
+
+async function showCategorySecretsModal(category) {
+  const close = openEditModal((content) => {
+    activeVaultModal = { category, content };
+    content.addEventListener('click', onVaultClick);
+    content.innerHTML = `<div class="vault-loading">Cargando ${escHtml(category)}…</div>`;
+    ensureCategoryLoaded(category)
+      .then(() => renderCategoryModalContent(category, content))
+      .catch(err => {
+        content.innerHTML = `<div class="vault-error"><div class="vault-empty-title">No se pudo abrir la categoría</div><div class="vault-empty-text">${escHtml(err.message)}</div></div>`;
+      });
+  }, { title: `Secretos · ${category}` });
+  return close;
 }
 
 function renderEntry(category, entry) {
@@ -136,9 +249,9 @@ function renderEntry(category, entry) {
           <input class="form-input vault-edit-input" data-vault-edit-input="${escHtml(editId)}" type="text" value="${escHtml(entry.value)}" autocomplete="off">
         </div>
         <div class="vault-entry-actions">
-          <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye-edit" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">◐</button>
-          <button class="btn btn-sm btn-primary vault-icon-btn" data-vault-action="save" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Guardar">✓</button>
-          <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="cancel" data-edit-id="${escHtml(editId)}" title="Cancelar">✕</button>
+          <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye-edit" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">Ver</button>
+          <button class="btn btn-sm btn-primary vault-icon-btn" data-vault-action="save" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Guardar">Guardar</button>
+          <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="cancel" data-edit-id="${escHtml(editId)}" title="Cancelar">Cancelar</button>
         </div>
       </div>`;
   }
@@ -150,9 +263,9 @@ function renderEntry(category, entry) {
         <div class="vault-entry-value${isRevealed ? '' : ' masked'}" data-vault-value="${escHtml(editId)}">${isRevealed ? escHtml(entry.value) : '••••••••••••'}</div>
       </div>
       <div class="vault-entry-actions">
-        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">${isRevealed ? '◑' : '◐'}</button>
-        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="edit" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Editar">✎</button>
-        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="delete" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Eliminar">⊗</button>
+        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="toggle-eye" data-edit-id="${escHtml(editId)}" title="Mostrar/ocultar">${isRevealed ? 'Ocultar' : 'Ver'}</button>
+        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="edit" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Editar">Editar</button>
+        <button class="btn btn-sm btn-ghost vault-icon-btn" data-vault-action="delete" data-category="${escHtml(category)}" data-key="${escHtml(entry.key)}" title="Eliminar">Eliminar</button>
       </div>
     </div>`;
 }
@@ -168,6 +281,21 @@ function renderCategory(catName) {
   body.innerHTML = renderCategoryBody(catName, keys, cat.file, cat.modified_at);
 }
 
+function updateCategoryHeaderState(category, isOpen) {
+  const header = document.querySelector(`[data-vault-toggle="${cssEsc(category)}"]`);
+  if (!header) return;
+
+  header.setAttribute('aria-expanded', String(isOpen));
+  const state = header.querySelector('.vault-card-state');
+  if (state) state.textContent = isOpen ? 'abierta' : 'cerrada';
+  const toggle = header.querySelector('.vault-card-toggle');
+  if (toggle) toggle.dataset.open = String(isOpen);
+  const arrow = header.querySelector('.infra-arrow');
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
+  const label = header.querySelector('.infra-toggle-label');
+  if (label) label.textContent = isOpen ? 'Ocultar claves' : 'Ver claves';
+}
+
 async function ensureCategoryLoaded(category) {
   if (vaultData.has(category)) return vaultData.get(category);
   const data = await get(`/api/vault/${encodeURIComponent(category)}`);
@@ -181,12 +309,14 @@ async function toggleCategory(category) {
 
   if (expanded.has(category)) {
     expanded.delete(category);
+    updateCategoryHeaderState(category, false);
     body.classList.add('hidden');
     body.innerHTML = '';
     return;
   }
 
   expanded.add(category);
+  updateCategoryHeaderState(category, true);
   body.classList.remove('hidden');
   body.innerHTML = `<div class="vault-loading">Cargando ${escHtml(category)}…</div>`;
 
@@ -195,6 +325,7 @@ async function toggleCategory(category) {
     renderCategory(category);
   } catch (err) {
     expanded.delete(category);
+    updateCategoryHeaderState(category, false);
     body.innerHTML = `<div class="vault-error"><div class="vault-empty-title">No se pudo abrir la categoría</div><div class="vault-empty-text">${escHtml(err.message)}</div></div>`;
   }
 }
@@ -212,11 +343,12 @@ function setRevealed(editId, enabled) {
 function rerenderCategoryFromState(category) {
   const cat = vaultCategories.find(c => c.category === category);
   if (!cat) return;
-  const body = document.querySelector(`[data-vault-body="${cssEsc(category)}"]`);
-  if (!body) return;
-
   const data = vaultData.get(category) ?? { keys: [] };
-  body.innerHTML = renderCategoryBody(category, data.keys, cat.file, cat.modified_at);
+  const body = document.querySelector(`[data-vault-body="${cssEsc(category)}"]`);
+  if (body) body.innerHTML = renderCategoryBody(category, data.keys, cat.file, cat.modified_at);
+  if (activeVaultModal?.category === category) {
+    renderCategoryModalContent(category, activeVaultModal.content);
+  }
 }
 
 async function refreshCategory(category) {
@@ -227,6 +359,9 @@ async function refreshCategory(category) {
   vaultCategories = list;
   vaultData.set(category, data);
   renderVault();
+  if (activeVaultModal?.category === category) {
+    renderCategoryModalContent(category, activeVaultModal.content);
+  }
   if (expanded.has(category)) {
     expanded.delete(category);
     toggleCategory(category);
@@ -264,6 +399,49 @@ async function addSecret(category) {
       }
     });
   }, { size: 'compact' });
+  return close;
+}
+
+async function showVaultManageModal() {
+  const firstCategory = vaultCategories[0]?.category ?? '';
+  const options = vaultCategories.map(cat => [cat.category, cat.category]);
+  const close = openEditModal((box, done) => {
+    box.innerHTML = `
+      <div class="modal-body vault-manage-hint">Alta rápida de secreto. Elegí la categoría, cargá clave y valor, y se guarda en el .env correspondiente.</div>
+      ${formSelect('Categoría', 'vault-manage-category', firstCategory, options)}
+      ${formField('Clave', 'vault-manage-key', '', 'NOMBRE_VARIABLE')}
+      ${formField('Valor', 'vault-manage-value', '', 'valor')}
+      <div class="manage-banner hidden" id="vault-manage-banner"></div>
+      <div class="manage-form-actions">
+        <button class="btn btn-modal-cancel" id="vault-manage-cancel">Cancelar</button>
+        <button class="btn btn-modal-ok" id="vault-manage-save">Guardar</button>
+      </div>`;
+
+    const categoryEl = box.querySelector('#vault-manage-category');
+    const keyEl = box.querySelector('#vault-manage-key');
+    const valueEl = box.querySelector('#vault-manage-value');
+    const banner = box.querySelector('#vault-manage-banner');
+    box.querySelector('#vault-manage-cancel').addEventListener('click', done);
+    box.querySelector('#vault-manage-save').addEventListener('click', async () => {
+      const category = categoryEl.value;
+      const key = keyEl.value.trim();
+      const value = valueEl.value;
+      if (!category || !key || !/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+        banner.textContent = 'Clave inválida. Usá formato NOMBRE_VARIABLE.';
+        banner.className = 'manage-banner manage-banner-error';
+        keyEl.focus();
+        return;
+      }
+      try {
+        await apiFetch(`/api/vault/${encodeURIComponent(category)}`, { method: 'POST', body: { key, value } });
+        done();
+        await refreshCategory(category);
+      } catch (err) {
+        banner.textContent = err.message;
+        banner.className = 'manage-banner manage-banner-error';
+      }
+    });
+  }, { size: 'compact', title: 'Gestionar secretos' });
   return close;
 }
 
@@ -316,6 +494,11 @@ function onVaultClick(e) {
   const key = btn.dataset.key;
   const editId = btn.dataset.editId;
 
+  if (action === 'open-modal' && category) {
+    showCategorySecretsModal(category);
+    return;
+  }
+
   if (action === 'add' && category) {
     addSecret(category);
     return;
@@ -355,4 +538,12 @@ function onVaultClick(e) {
   if (action === 'delete' && category && key) {
     deleteEntry(category, key);
   }
+}
+
+function onVaultKeydown(e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const toggle = e.target.closest('[data-vault-toggle]');
+  if (!toggle) return;
+  e.preventDefault();
+  toggleCategory(toggle.getAttribute('data-vault-toggle'));
 }

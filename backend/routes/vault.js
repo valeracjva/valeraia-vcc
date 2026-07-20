@@ -24,6 +24,7 @@ router.get('/', async (_req, res, next) => {
         return {
           category,
           file,
+          file_path: filePath,
           keys_count: keysCount,
           modified_at: mtime.toISOString(),
         };
@@ -77,6 +78,7 @@ router.get('/:category', async (req, res, next) => {
     res.json({
       category,
       file: `${category}.env`,
+      file_path: filePath,
       modified_at: mtime.toISOString(),
       keys,
       preamble: comments.length > 0 ? comments.join('\n') : null,

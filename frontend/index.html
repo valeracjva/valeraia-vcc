@@ -358,8 +358,13 @@
         <div class="vault-toolbar view-toolbar">
           <div class="view-toolbar-start">
             <span class="view-section-label">Secretos</span>
+            <div class="btn-group infra-group-toggle">
+              <button class="btn-tab btn-vault-view active" data-vault-view="cards">Tarjetas</button>
+              <button class="btn-tab btn-vault-view" data-vault-view="list">Listado</button>
+            </div>
           </div>
           <div class="view-toolbar-end">
+            <button class="btn btn-warning btn-ssl-manage" id="btn-vault-manage">⚙ Gestionar secretos</button>
             <button class="btn btn-ssl-refresh" id="btn-vault-refresh">↻ Recargar</button>
           </div>
         </div>
